@@ -1,7 +1,9 @@
+import Header from "../../components/Header/Header.jsx";
+
 export default function Main() {
     return (
         <>
-            <div className="div">PENIS</div>
+            <Header />
         </>
     );
 }

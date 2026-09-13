@@ -1,0 +1,39 @@
+.button {
+  border: none;
+  background: none;
+
+  &__link {
+    font-size: 20px;
+    background: var(--color-accent);
+    color: var(--color-accent-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    column-gap: 9px;
+    padding-inline: 45px;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    height: var(--button-height);
+
+    @include hover {
+      box-shadow: 0 0 20px rgba(56, 255, 162, 0.6);
+    }
+  }
+
+  &-text {
+    background: none;
+    color: var(--color-light);
+    display: block;
+    padding-inline: 0;
+    font-weight: 500;
+    font-size: 16px;
+    column-gap: 0;
+    height: inherit;
+
+    @include hover {
+      box-shadow: none;
+      color: var(--color-accent);
+
+    }
+  }
+}

@@ -1,4 +1,6 @@
 @import 'normalize', 'mixins', 'fonts', 'variables', 'media', 'utils', 'globals';
 
-@import '../pages/Main/Main';
+@import '../pages/Main/Main',
+        '../components/Button/Button',
+        '../components/Header/Header';
 
