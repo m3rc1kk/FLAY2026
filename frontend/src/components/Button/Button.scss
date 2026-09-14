@@ -9,11 +9,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    line-height: 1;
     column-gap: 9px;
     padding-inline: 45px;
     font-weight: 600;
     border-radius: var(--border-radius);
     height: var(--button-height);
+
+    @include mobile {
+      font-size: 14px;
+      height: 44px;
+      padding-inline: 20px;
+    }
 
     @include hover {
       box-shadow: 0 0 20px rgba(56, 255, 162, 0.6);
@@ -34,6 +43,18 @@
       box-shadow: none;
       color: var(--color-accent);
 
+    }
+  }
+
+  &-light {
+    background: none;
+    border: var(--border);
+    color: var(--color-light);
+    opacity: .6;
+
+    @include hover {
+      box-shadow: none;
+      opacity: 1;
     }
   }
 }

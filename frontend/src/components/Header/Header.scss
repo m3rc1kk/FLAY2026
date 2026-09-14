@@ -11,16 +11,29 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+
+    @include mobile {
+      display: none;
+    }
+
     &-list {
       display: flex;
       align-items: center;
       column-gap: 52px;
+
+      @include desktop {
+        column-gap: 32px;
+      }
     }
 
     &-link {
       font-size: 16px;
       color: var(--color-light);
       font-weight: 500;
+
+      @include tablet {
+        font-size: 14px;
+      }
 
       @include hover {
         color: var(--color-accent);
@@ -32,5 +45,11 @@
     font-size: 16px;
     padding-inline: 28px;
     height: 44px;
+
+    @include mobile {
+      padding-inline: 20px;
+      font-size: 14px;
+      height: 36px;
+    }
   }
 }

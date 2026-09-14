@@ -1,0 +1,24 @@
+.section {
+  padding-block: 120px;
+
+  @include mobile {
+    padding-block: 80px;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: center;
+
+    &-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 600;
+      padding-bottom: 90px;
+
+      @include mobile {
+        font-size: 16px;
+        padding-bottom: 32px;
+      }
+    }
+  }
+}

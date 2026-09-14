@@ -1,6 +1,11 @@
 @import 'normalize', 'mixins', 'fonts', 'variables', 'media', 'utils', 'globals';
 
 @import '../pages/Main/Main',
+        '../components/Logo/Logo',
+        '../components/Section/Section',
         '../components/Button/Button',
-        '../components/Header/Header';
+        '../components/Header/Header',
+        '../components/Hero/Hero',
+        '../components/About/About',
+        '../components/Winners/Winners';
 
