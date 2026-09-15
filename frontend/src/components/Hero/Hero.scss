@@ -63,7 +63,7 @@
     line-height: 0.8;
     color: var(--color-accent);
     text-shadow:
-      0 0 30px rgba(var(--color-accent-rgb), 0.30),
+      0 0 30px rgba(var(--color-accent-rgb), 0.20),
       0 0 70px rgba(var(--color-accent-rgb), 0.10),
       0 0 140px rgba(var(--color-accent-rgb), 0.10);
 
@@ -96,9 +96,9 @@
     &--green {
       color: var(--color-accent);
       text-shadow:
-        0 0 30px rgba(var(--color-accent-rgb), 0.20),
-        0 0 70px rgba(var(--color-accent-rgb), 0.20),
-        0 0 140px rgba(var(--color-accent-rgb), 0.20);
+        0 0 30px rgba(var(--color-accent-rgb), 0.15),
+        0 0 70px rgba(var(--color-accent-rgb), 0.15),
+        0 0 140px rgba(var(--color-accent-rgb), 0.15);
     }
   }
 

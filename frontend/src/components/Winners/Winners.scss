@@ -1,0 +1,142 @@
+.winners {
+
+  &__list {
+    display: flex;
+    align-items: flex-start;
+    column-gap: 36px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    cursor: grab;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &--dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    &--free {
+      user-select: none;
+    }
+
+    img {
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+
+    @include mobile {
+      column-gap: 20px;
+    }
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 455px;
+
+    @include desktop {
+      width: 320px;
+    }
+
+    @include mobile {
+      width: 240px;
+    }
+  }
+
+  &__image {
+    height: auto;
+
+    @include mobile {
+      width: 200px;
+    }
+
+    &-wrapper {
+      position: relative;
+      z-index: 0;
+      &::after {
+        content: "";
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: var(--color-accent);
+        position: absolute;
+        border-radius: var(--border-radius);
+        top: -6px;
+        right: -6px;
+        z-index: -1;
+      }
+    }
+
+  }
+
+  &__nomination {
+    padding-block: 24px 12px;
+    font-size: 42px;
+    font-weight: 500;
+    color: transparent;
+    opacity: .8;
+    -webkit-text-stroke: 1px var(--color-accent);
+
+    @include desktop {
+      font-size: 28px;
+    }
+
+    @include mobile {
+      font-size: 20px;
+    }
+  }
+
+  &__name {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+
+    @include desktop {
+      font-size: 28px;
+    }
+
+    @include mobile {
+      font-size: 20px;
+    }
+  }
+
+  &__progress {
+    position: relative;
+    height: 4px;
+    margin-top: 60px;
+    background: rgba(var(--color-accent-rgb), 0.15);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    touch-action: none;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -14px 0;
+    }
+
+    &--active {
+      cursor: grabbing;
+    }
+
+    @include mobile {
+      margin-top: 32px;
+    }
+
+    &-thumb {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: var(--color-accent);
+      border-radius: var(--border-radius);
+      pointer-events: none;
+    }
+  }
+}

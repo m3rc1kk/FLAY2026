@@ -1,6 +1,7 @@
 import Header from "../../components/Header/Header.jsx";
 import Hero from "../../components/Hero/Hero.jsx";
 import About from "../../components/About/About.jsx";
+import Winners from "../../components/Winners/Winners.jsx";
 
 
 export default function Main() {
@@ -9,6 +10,7 @@ export default function Main() {
             <Header />
             <Hero />
             <About />
+            <Winners />
         </>
     );
 }
