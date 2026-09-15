@@ -3,6 +3,7 @@ import Hero from "../../components/Hero/Hero.jsx";
 import About from "../../components/About/About.jsx";
 import Winners from "../../components/Winners/Winners.jsx";
 import Nominations from "../../components/Nominations/Nominations.jsx";
+import Footer from "../../components/Footer/Footer.jsx";
 
 
 export default function Main() {
@@ -13,6 +14,7 @@ export default function Main() {
             <About />
             <Winners />
             <Nominations />
+            <Footer />
         </>
     );
 }
