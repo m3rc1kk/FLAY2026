@@ -1,0 +1,106 @@
+.nomination-card {
+  width: 100%;
+  height: 100%;
+  padding-inline: 0;
+  overflow: hidden;
+
+  &:nth-child(odd) {
+    background: var(--color-accent);
+    color: var(--color-accent-dark-alt);
+  }
+
+  &:nth-child(even) {
+    background: var(--color-dark);
+    color: var(--color-accent);
+  }
+
+  &:nth-child(even) &__number {
+    -webkit-text-stroke-color: rgba(var(--color-accent-rgb), 1);
+  }
+
+  &__inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  &__header {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+
+    @include mobile {
+      top: -50px;
+    }
+  }
+
+  &__number {
+    font-size: 300px;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--color-accent-dark);
+    opacity: .4;
+
+    @include desktop {
+      font-size: 220px;
+    }
+
+    @include mobile {
+      font-size: 160px;
+    }
+  }
+
+  &__title {
+    font-size: 90px;
+    font-weight: 900;
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: 40px;
+    line-height: 0.9;
+
+    @include desktop {
+      font-size: 64px;
+    }
+
+    @include mobile {
+      font-size: 44px;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+    }
+  }
+
+  &__decoration {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    &-image {
+      width: 100px;
+      height: auto;
+
+      @include desktop {
+        width: 80px;
+      }
+
+      @include mobile {
+        width: 56px;
+      }
+    }
+  }
+
+
+  &__title-word {
+    display: block;
+  }
+
+  &:nth-child(odd) &__decoration-image--on-dark {
+    display: none;
+  }
+
+  &:nth-child(even) &__decoration-image--on-light {
+    display: none;
+  }
+
+}
