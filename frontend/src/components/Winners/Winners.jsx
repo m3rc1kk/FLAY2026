@@ -1,171 +1,118 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { winners } from '../../data/winners.js';
+import useInView from '../../hooks/useInView.js';
+
+const pad = (value) => String(value).padStart(2, '0');
 
 export default function Winners() {
-    const listRef = useRef(null);
-    const progressRef = useRef(null);
-    const dragRef = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
-    const progressDragRef = useRef(false);
-    const [thumb, setThumb] = useState({ width: 100, offset: 0 });
-    const [dragging, setDragging] = useState(false);
-    const [scrubbing, setScrubbing] = useState(false);
-
-    const updateThumb = useCallback(() => {
-        const list = listRef.current;
-        if (!list) return;
-
-        const { clientWidth, scrollWidth, scrollLeft } = list;
-        const visible = scrollWidth > 0 ? (clientWidth / scrollWidth) * 100 : 100;
-        const maxScroll = scrollWidth - clientWidth;
-        const progress = maxScroll > 0 ? scrollLeft / maxScroll : 0;
-
-        setThumb({ width: visible, offset: progress * (100 - visible) });
-    }, []);
+    const [sectionRef, inView] = useInView();
+    const boardRef = useRef(null);
+    const previewRef = useRef(null);
+    const pointerRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, frame: 0, started: false });
+    const [active, setActive] = useState(null);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
-        const list = listRef.current;
-        if (!list) return;
+        const pointer = pointerRef.current;
+        return () => cancelAnimationFrame(pointer.frame);
+    }, []);
 
-        updateThumb();
+    const render = () => {
+        const pointer = pointerRef.current;
+        const preview = previewRef.current;
+        if (!preview) return;
 
-        const observer = new ResizeObserver(updateThumb);
-        observer.observe(list);
-        Array.from(list.children).forEach((item) => observer.observe(item));
-        window.addEventListener('resize', updateThumb);
+        const deltaX = pointer.targetX - pointer.x;
+        pointer.x += deltaX * .12;
+        pointer.y += (pointer.targetY - pointer.y) * .12;
+        const tilt = Math.max(-10, Math.min(10, deltaX * .08));
 
-        return () => {
-            observer.disconnect();
-            window.removeEventListener('resize', updateThumb);
-        };
-    }, [updateThumb]);
+        preview.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) rotate(${tilt}deg)`;
 
-    const handlePointerDown = (event) => {
-        if (event.pointerType !== 'mouse') return;
-
-        const list = listRef.current;
-        dragRef.current = { active: true, startX: event.clientX, startScroll: list.scrollLeft, moved: false };
-        setDragging(true);
-        list.setPointerCapture(event.pointerId);
+        const isMoving = Math.abs(deltaX) > .3 || Math.abs(pointer.targetY - pointer.y) > .3;
+        pointer.frame = isMoving ? requestAnimationFrame(render) : 0;
     };
 
     const handlePointerMove = (event) => {
-        const drag = dragRef.current;
-        if (!drag.active) return;
+        if (event.pointerType !== 'mouse') return;
 
-        const delta = event.clientX - drag.startX;
-        if (Math.abs(delta) > 3) drag.moved = true;
-        listRef.current.scrollLeft = drag.startScroll - delta;
-    };
+        const board = boardRef.current;
+        const pointer = pointerRef.current;
+        const rect = board.getBoundingClientRect();
 
-    const handlePointerUp = (event) => {
-        const drag = dragRef.current;
-        if (!drag.active) return;
+        pointer.targetX = event.clientX - rect.left;
+        pointer.targetY = event.clientY - rect.top;
 
-        const list = listRef.current;
-        drag.active = false;
-        setDragging(false);
-
-        if (list.hasPointerCapture(event.pointerId)) {
-            list.releasePointerCapture(event.pointerId);
+        if (!pointer.started) {
+            pointer.x = pointer.targetX;
+            pointer.y = pointer.targetY;
+            pointer.started = true;
+            previewRef.current.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
         }
+
+        if (!pointer.frame) pointer.frame = requestAnimationFrame(render);
     };
 
-    const handleClickCapture = (event) => {
-        if (dragRef.current.moved) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-    };
-
-    const scrollToPointer = (clientX, smooth) => {
-        const list = listRef.current;
-        const track = progressRef.current;
-        if (!list || !track) return;
-
-        const maxScroll = list.scrollWidth - list.clientWidth;
-        if (maxScroll <= 0) return;
-
-        const rect = track.getBoundingClientRect();
-        const thumbWidth = rect.width * (list.clientWidth / list.scrollWidth);
-        const usable = rect.width - thumbWidth;
-        const ratio = usable > 0 ? (clientX - rect.left - thumbWidth / 2) / usable : 0;
-
-        list.scrollTo({
-            left: Math.min(Math.max(ratio, 0), 1) * maxScroll,
-            behavior: smooth ? 'smooth' : 'auto',
-        });
-    };
-
-    const handleProgressDown = (event) => {
-        progressDragRef.current = true;
-        setScrubbing(true);
-        scrollToPointer(event.clientX, true);
-        progressRef.current.setPointerCapture(event.pointerId);
-    };
-
-    const handleProgressMove = (event) => {
-        if (!progressDragRef.current) return;
-        scrollToPointer(event.clientX, false);
-    };
-
-    const handleProgressUp = (event) => {
-        if (!progressDragRef.current) return;
-
-        const track = progressRef.current;
-        progressDragRef.current = false;
-        setScrubbing(false);
-
-        if (track.hasPointerCapture(event.pointerId)) {
-            track.releasePointerCapture(event.pointerId);
-        }
+    const handlePointerLeave = () => {
+        pointerRef.current.started = false;
+        setActive(null);
     };
 
     return (
         <>
-            <section className="section winners__section container" id="winners">
+            <section className={`section winners__section container${inView ? ' is-inview' : ''}`} id="winners" ref={sectionRef}>
                 <header className="section__header">
                     <h3 className="section__header-title">Победители FLAY 2025</h3>
                 </header>
 
-                <div className="winners">
-                    <div className="winners__inner">
-                        <ul
-                            className={`winners__list ${dragging ? 'winners__list--dragging' : ''} ${scrubbing ? 'winners__list--free' : ''}`}
-                            ref={listRef}
-                            onScroll={updateThumb}
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUp}
-                            onPointerCancel={handlePointerUp}
-                            onClickCapture={handleClickCapture}
-                        >
-                            {winners.map((winner) => (
-                                <li className="winners__item" key={winner.nomination}>
-                                    <div className="winners__image-wrapper">
-                                        <img src={winner.image} width={270} height={350} loading={'lazy'} alt={winner.name} className="winners__image"/>
-                                    </div>
-                                    <span className="winners__nomination">{winner.nomination}</span>
-                                    <h1 className="winners__name">{winner.name}</h1>
-                                </li>
-                            ))}
-                        </ul>
+                <div
+                    className={`winners${active !== null ? ' is-hovering' : ''}${isExpanded ? ' is-expanded' : ''}`}
+                    ref={boardRef}
+                    onPointerMove={handlePointerMove}
+                    onPointerLeave={handlePointerLeave}
+                >
+                    <ol className="winners__list">
+                        {winners.map((winner, index) => (
+                            <li
+                                className={`winners__row${active === index ? ' is-active' : ''}`}
+                                key={winner.nomination}
+                                style={{ '--i': index }}
+                                onPointerEnter={(event) => event.pointerType === 'mouse' && setActive(index)}
+                            >
+                                <span className="winners__index">{pad(index + 1)}</span>
 
-                        <div
-                            className={`winners__progress ${scrubbing ? 'winners__progress--active' : ''}`}
-                            ref={progressRef}
-                            onPointerDown={handleProgressDown}
-                            onPointerMove={handleProgressMove}
-                            onPointerUp={handleProgressUp}
-                            onPointerCancel={handleProgressUp}
-                        >
-                            <span
-                                className="winners__progress-thumb"
-                                style={{ width: `${thumb.width}%`, left: `${thumb.offset}%` }}
-                            />
+                                <span className="winners__thumb">
+                                    <img src={winner.image} width={56} height={72} loading="lazy" alt="" className="winners__thumb-image"/>
+                                </span>
+
+                                <span className="winners__text">
+                                    <span className="winners__nomination">{winner.nomination}</span>
+                                    <span className="winners__name">{winner.name}</span>
+                                </span>
+                            </li>
+                        ))}
+                    </ol>
+
+                    <button type="button" className="winners__more" onClick={() => setIsExpanded((expanded) => !expanded)} aria-expanded={isExpanded}>
+                        {isExpanded ? 'Свернуть' : `Показать всех победителей (${winners.length})`}
+                    </button>
+
+                    <div className="winners__preview" ref={previewRef} aria-hidden="true">
+                        <div className="winners__preview-frame">
+                            {winners.map((winner, index) => (
+                                <img
+                                    key={winner.nomination}
+                                    src={winner.image}
+                                    width={240}
+                                    height={300}
+                                    loading="lazy"
+                                    alt=""
+                                    className={`winners__preview-image${active === index ? ' is-active' : ''}`}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>
-
             </section>
         </>
     );

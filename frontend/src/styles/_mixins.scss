@@ -10,3 +10,12 @@
     }
   }
 }
+
+@mixin reveal($name: reveal-rise, $duration: 1s, $delay: 0s) {
+  animation: $name $duration cubic-bezier(.2, .8, .2, 1) $delay backwards;
+  animation-play-state: paused;
+
+  .is-inview & {
+    animation-play-state: running;
+  }
+}

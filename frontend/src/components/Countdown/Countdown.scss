@@ -1,0 +1,118 @@
+.countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  row-gap: 24px;
+
+  @include mobile {
+    row-gap: 16px;
+  }
+
+  &__label {
+    color: var(--color-light);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: .08em;
+    opacity: .5;
+
+    @include mobile {
+      font-size: 12px;
+    }
+  }
+
+  &.is-finished &__label {
+    color: var(--color-accent);
+    opacity: 1;
+    text-shadow: 0 0 12px rgba(var(--color-accent-rgb), .5);
+  }
+
+  &__units {
+    display: flex;
+    align-items: flex-start;
+    column-gap: 20px;
+
+    @include mobile {
+      column-gap: 8px;
+    }
+  }
+
+  &__unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 12px;
+    min-width: 96px;
+
+    @include mobile {
+      min-width: 52px;
+      row-gap: 8px;
+    }
+  }
+
+  &__value {
+    display: flex;
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-light);
+    text-shadow:
+      0 0 8px rgba(var(--color-accent-rgb), 0.35),
+      0 0 16px rgba(var(--color-accent-rgb), 0.20);
+
+    @include tablet {
+      font-size: 56px;
+    }
+
+    @include mobile {
+      font-size: 32px;
+    }
+  }
+
+  &__digit {
+    display: inline-block;
+    animation: countdown-digit .55s cubic-bezier(.2, .8, .2, 1);
+  }
+
+  &__unit:last-child &__value {
+    color: var(--color-accent);
+  }
+
+  &__colon {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--color-accent);
+    opacity: .5;
+
+    @include tablet {
+      font-size: 56px;
+    }
+
+    @include mobile {
+      font-size: 32px;
+    }
+  }
+
+  &__unit-label {
+    color: var(--color-light);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: .08em;
+    opacity: .4;
+
+    @include mobile {
+      font-size: 9px;
+    }
+  }
+}
+
+@keyframes countdown-digit {
+  from {
+    opacity: 0;
+    transform: translateY(-40%);
+    filter: blur(6px);
+  }
+}

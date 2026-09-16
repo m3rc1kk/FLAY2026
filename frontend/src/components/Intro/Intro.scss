@@ -118,27 +118,6 @@
       overflow: visible;
       animation: intro-glow 2.4s ease-in-out 1s infinite;
     }
-
-    &-part {
-      fill: var(--color-accent);
-      transform-box: fill-box;
-      animation: .9s cubic-bezier(.34, 1.4, .64, 1) backwards;
-
-      &--top {
-        animation-name: intro-part-top;
-        animation-delay: .15s;
-      }
-
-      &--middle {
-        animation-name: intro-part-middle;
-        animation-delay: .3s;
-      }
-
-      &--stem {
-        animation-name: intro-part-stem;
-        animation-delay: .45s;
-      }
-    }
   }
 
   &.is-leaving &__logo-image {
@@ -194,27 +173,6 @@ html[data-intro="playing"] {
   .hero__decoration-image,
   .hero__background {
     animation-play-state: paused;
-  }
-}
-
-@keyframes intro-part-top {
-  from {
-    opacity: 0;
-    transform: translateX(28px);
-  }
-}
-
-@keyframes intro-part-middle {
-  from {
-    opacity: 0;
-    transform: translateX(-28px);
-  }
-}
-
-@keyframes intro-part-stem {
-  from {
-    opacity: 0;
-    transform: translateY(-28px);
   }
 }
 

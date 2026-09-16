@@ -1,4 +1,4 @@
-import Logo from "../../components/Logo/Logo.jsx";
+import LogoMark from "../../components/LogoMark/LogoMark.jsx";
 import ButtonLink from "../../components/Button/Button.jsx";
 import telegramIcon from '../../assets/images/Auth/telegram.svg'
 import backgroundImage from '../../assets/images/Auth/back.png'
@@ -8,9 +8,16 @@ export default function Auth() {
         <>
             <div className="auth">
                 <div className="auth__inner">
-                    <Logo className={'auth__logo'} />
-                    <h1 className="auth__title">
-                        F<span className="auth__title-light">LAY</span>
+                    <div className="logo auth__logo">
+                        <LogoMark className="logo__image" assemble />
+                    </div>
+                    <h1 className="auth__title" aria-label="FLAY">
+                        <span className="auth__title-letter" style={{ '--i': 0 }} aria-hidden="true">F</span>
+                        <span className="auth__title-light" aria-hidden="true">
+                            {'LAY'.split('').map((letter, index) => (
+                                <span key={letter} className="auth__title-letter" style={{ '--i': index + 1 }}>{letter}</span>
+                            ))}
+                        </span>
                     </h1>
                     <span className="auth__description">Закрытое голосование • FLAY 2026 </span>
                     <ButtonLink to={'/'} className={'auth__button'}>Войти через Telegram

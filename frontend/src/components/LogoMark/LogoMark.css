@@ -1,0 +1,45 @@
+.logo-mark {
+  display: block;
+  overflow: visible;
+}
+.logo-mark__part {
+  fill: var(--color-accent);
+  transform-box: fill-box;
+}
+.logo-mark--assemble .logo-mark__part {
+  animation: 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+  animation-delay: calc(var(--logo-delay, 0s) + var(--part-delay));
+}
+.logo-mark--assemble .logo-mark__part--top {
+  --part-delay: .15s;
+  animation-name: logo-mark-top;
+}
+.logo-mark--assemble .logo-mark__part--middle {
+  --part-delay: .3s;
+  animation-name: logo-mark-middle;
+}
+.logo-mark--assemble .logo-mark__part--stem {
+  --part-delay: .45s;
+  animation-name: logo-mark-stem;
+}
+
+@keyframes logo-mark-top {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes logo-mark-middle {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+@keyframes logo-mark-stem {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+
+/*# sourceMappingURL=LogoMark.css.map */

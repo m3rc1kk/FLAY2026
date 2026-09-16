@@ -1,11 +1,14 @@
 import ButtonLink from "../Button/Button.jsx";
 import telegramIcon from "../../assets/images/About/telegram.svg";
+import useInView from "../../hooks/useInView.js";
 
 
 export default function About() {
+    const [sectionRef, inView] = useInView();
+
     return (
         <>
-            <section className="section about__section container" id="about">
+            <section className={`section about__section container${inView ? ' is-inview' : ''}`} id="about" ref={sectionRef}>
                 <header className="section__header">
                     <h3 className="section__header-title">О нас</h3>
                 </header>

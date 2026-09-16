@@ -18,9 +18,7 @@ const subscribe = (listener) => {
     return () => listeners.delete(listener);
 };
 
-export const saveVote = (nominationNumber, nomineeNumber) => {
-    votes = { ...votes, [nominationNumber]: nomineeNumber };
-
+const persist = () => {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(votes));
     } catch {
@@ -28,6 +26,18 @@ export const saveVote = (nominationNumber, nomineeNumber) => {
     } finally {
         listeners.forEach((listener) => listener());
     }
+};
+
+export const removeVote = (nominationNumber) => {
+    const { [nominationNumber]: removed, ...rest } = votes;
+    if (removed === undefined) return;
+    votes = rest;
+    persist();
+};
+
+export const saveVote = (nominationNumber, nomineeNumber) => {
+    votes = { ...votes, [nominationNumber]: nomineeNumber };
+    persist();
 };
 
 export const useVotes = () => useSyncExternalStore(subscribe, () => votes);

@@ -1,4 +1,4 @@
-@import 'normalize', 'mixins', 'fonts', 'variables', 'media', 'utils', 'globals';
+@import 'normalize', 'mixins', 'fonts', 'variables', 'media', 'utils', 'globals', 'reveal';
 
 @import '../pages/Main/Main',
         '../components/Logo/Logo',
@@ -14,5 +14,15 @@
         '../pages/Auth/Auth',
         '../pages/Nominees/Nominees',
         '../components/NomineeCard/NomineeCard',
-        '../components/Intro/Intro';
+        '../components/Intro/Intro',
+        '../components/LogoMark/LogoMark',
+        '../components/CursorGlow/CursorGlow',
+        '../components/Marquee/Marquee',
+        '../components/Countdown/Countdown',
+        '../pages/NotFound/NotFound',
+        '../pages/Admin/Admin',
+        '../pages/Admin/Dashboard/Dashboard',
+        '../pages/Admin/Nominations/Nominations',
+        '../pages/Admin/Users/Users',
+        '../pages/Admin/Voting/Voting';
 

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import LogoMark from '../LogoMark/LogoMark.jsx';
 
 const MIN_DURATION = 1800;
 const MAX_DURATION = 6000;
@@ -130,11 +131,7 @@ export default function Intro() {
                 </div>
 
                 <div className="intro__logo" ref={logoRef}>
-                    <svg className="intro__logo-image" viewBox="0 0 32 34" fill="none" aria-hidden="true">
-                        <path className="intro__logo-part intro__logo-part--top" d="M31.9879 0L27.4145 8.18341H0L5.58025 0H31.9879Z" />
-                        <path className="intro__logo-part intro__logo-part--middle" d="M24.9124 19.7765H12.4453V11.3008H29.1168L24.9124 19.7765Z" />
-                        <path className="intro__logo-part intro__logo-part--stem" d="M8.69135 29.3511L4.22203 33.9597L0 29.6059V11.3008H8.69135V29.3511Z" />
-                    </svg>
+                    <LogoMark className="intro__logo-image" assemble />
                 </div>
             </div>
         </>

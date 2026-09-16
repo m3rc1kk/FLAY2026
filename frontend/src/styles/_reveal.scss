@@ -1,0 +1,20 @@
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(60px);
+  }
+}
+
+@keyframes reveal-blur {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(16px);
+  }
+}
+
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+}

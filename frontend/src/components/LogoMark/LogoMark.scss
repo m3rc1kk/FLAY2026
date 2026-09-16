@@ -1,0 +1,50 @@
+.logo-mark {
+  display: block;
+  overflow: visible;
+
+  &__part {
+    fill: var(--color-accent);
+    transform-box: fill-box;
+  }
+
+  &--assemble &__part {
+    animation: .9s cubic-bezier(.34, 1.4, .64, 1) backwards;
+    animation-delay: calc(var(--logo-delay, 0s) + var(--part-delay));
+
+    &--top {
+      --part-delay: .15s;
+      animation-name: logo-mark-top;
+    }
+
+    &--middle {
+      --part-delay: .3s;
+      animation-name: logo-mark-middle;
+    }
+
+    &--stem {
+      --part-delay: .45s;
+      animation-name: logo-mark-stem;
+    }
+  }
+}
+
+@keyframes logo-mark-top {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes logo-mark-middle {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+@keyframes logo-mark-stem {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}

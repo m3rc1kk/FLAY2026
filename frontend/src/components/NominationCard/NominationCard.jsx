@@ -1,12 +1,23 @@
 import ButtonLink from "../Button/Button.jsx";
 import plusIcon from "../../assets/images/Vote/plus.png";
 import plusBlackIcon from "../../assets/images/Vote/plus-black.png";
+import { useVotes } from "../../data/votes.js";
 
 export default function NominationCard({ number, title }) {
+    const isVoted = useVotes()[number] !== undefined;
+
     return (
         <>
-            <ButtonLink to={`/nominations/${number}`} className='nomination-card'>
+            <ButtonLink to={`/nominations/${number}`} className={`nomination-card${isVoted ? ' is-voted' : ''}`}>
                 <div className="nomination-card__inner">
+                    {isVoted && (
+                        <span className="nomination-card__badge">
+                            <svg className="nomination-card__badge-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+                                <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            <span className="nomination-card__badge-text">Голос отдан</span>
+                        </span>
+                    )}
                     <header className="nomination-card__header">
                         <span className="nomination-card__number">{String(number).padStart(2, '0')}</span>
                     </header>

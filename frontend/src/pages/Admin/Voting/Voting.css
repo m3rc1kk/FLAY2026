@@ -1,0 +1,18 @@
+/* Error: Undefined mixin.
+ *    ,
+ * 9  | /     @include desktop {
+ * 10 | |       grid-template-columns: minmax(0, 1fr);
+ * 11 | \     }
+ *    '
+ *   Voting.scss 9:5  root stylesheet */
+
+body::before {
+  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
+      "Droid Sans Mono", monospace, monospace;
+  white-space: pre;
+  display: block;
+  padding: 1em;
+  margin-bottom: 1em;
+  border-bottom: 2px solid black;
+  content: "Error: Undefined mixin.\a    \2577 \a 9  \2502  \250c      @include desktop {\a 10 \2502  \2502        grid-template-columns: minmax(0, 1fr);\a 11 \2502  \2514      }\a    \2575 \a   Voting.scss 9:5  root stylesheet";
+}
