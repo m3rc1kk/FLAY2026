@@ -7118,3 +7118,21 @@ input:focus-visible + .admin-checkbox__box {
   padding: 3px 8px;
   border-radius: 999px;
   background: var(--color-accent);
+  color: var(--color-accent-dark);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.admin-voting-rules__items {
+  display: flex;
+  flex-direction: column;
+  row-gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/*# sourceMappingURL=styles.css.map */
