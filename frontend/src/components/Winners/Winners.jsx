@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import uebkinewsImage from '../../assets/images/Winners/uebkinews.png';
+import { winners } from '../../data/winners.js';
 
 export default function Winners() {
     const listRef = useRef(null);
@@ -122,7 +122,7 @@ export default function Winners() {
 
     return (
         <>
-            <section className="section winners__section container">
+            <section className="section winners__section container" id="winners">
                 <header className="section__header">
                     <h3 className="section__header-title">Победители FLAY 2025</h3>
                 </header>
@@ -139,48 +139,15 @@ export default function Winners() {
                             onPointerCancel={handlePointerUp}
                             onClickCapture={handleClickCapture}
                         >
-                            <li className="winners__item">
-                                <div className="winners__image-wrapper">
-                                    <img src={uebkinewsImage} width={270} height={350} loading={'lazy'} alt="Winner" className="winners__image"/>
-                                </div>
-                                <span className="winners__nomination">FLAY KING</span>
-                                <h1 className="winners__name">МАКСИМ МЕРЦАЛОВ</h1>
-                            </li>
-                            <li className="winners__item">
-                                <div className="winners__image-wrapper">
-                                    <img src={uebkinewsImage} width={270} height={350} loading={'lazy'} alt="Winner" className="winners__image"/>
-                                </div>
-                                <span className="winners__nomination">FLAY KING</span>
-                                <h1 className="winners__name">МАКСИМ МЕРЦАЛОВ</h1>
-                            </li>
-                            <li className="winners__item">
-                                <div className="winners__image-wrapper">
-                                    <img src={uebkinewsImage} width={270} height={350} loading={'lazy'} alt="Winner" className="winners__image"/>
-                                </div>
-                                <span className="winners__nomination">FLAY KING</span>
-                                <h1 className="winners__name">МАКСИМ МЕРЦАЛОВ</h1>
-                            </li>
-                            <li className="winners__item">
-                                <div className="winners__image-wrapper">
-                                    <img src={uebkinewsImage} width={270} height={350} loading={'lazy'} alt="Winner" className="winners__image"/>
-                                </div>
-                                <span className="winners__nomination">FLAY KING</span>
-                                <h1 className="winners__name">МАКСИМ МЕРЦАЛОВ</h1>
-                            </li>
-                            <li className="winners__item">
-                                <div className="winners__image-wrapper">
-                                    <img src={uebkinewsImage} width={270} height={350} loading={'lazy'} alt="Winner" className="winners__image"/>
-                                </div>
-                                <span className="winners__nomination">FLAY KING</span>
-                                <h1 className="winners__name">МАКСИМ МЕРЦАЛОВ</h1>
-                            </li>
-                            <li className="winners__item">
-                                <div className="winners__image-wrapper">
-                                    <img src={uebkinewsImage} width={270} height={350} loading={'lazy'} alt="Winner" className="winners__image"/>
-                                </div>
-                                <span className="winners__nomination">FLAY KING</span>
-                                <h1 className="winners__name">МАКСИМ МЕРЦАЛОВ</h1>
-                            </li>
+                            {winners.map((winner) => (
+                                <li className="winners__item" key={winner.nomination}>
+                                    <div className="winners__image-wrapper">
+                                        <img src={winner.image} width={270} height={350} loading={'lazy'} alt={winner.name} className="winners__image"/>
+                                    </div>
+                                    <span className="winners__nomination">{winner.nomination}</span>
+                                    <h1 className="winners__name">{winner.name}</h1>
+                                </li>
+                            ))}
                         </ul>
 
                         <div

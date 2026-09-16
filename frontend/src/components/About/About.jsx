@@ -5,7 +5,7 @@ import telegramIcon from "../../assets/images/About/telegram.svg";
 export default function About() {
     return (
         <>
-            <section className="section about__section container">
+            <section className="section about__section container" id="about">
                 <header className="section__header">
                     <h3 className="section__header-title">О нас</h3>
                 </header>
@@ -26,7 +26,7 @@ export default function About() {
                             </p>
                         </div>
 
-                        <ButtonLink className="about__button" to="/">Телеграм <img src={telegramIcon} width={24} height={24} loading={'lazy'} alt="Telegram" className="about__button-icon"/></ButtonLink>
+                        <ButtonLink className="about__button" href="https://t.me/flayof">Телеграм <img src={telegramIcon} width={24} height={24} loading={'lazy'} alt="Telegram" className="about__button-icon"/></ButtonLink>
 
                     </div>
                 </div>

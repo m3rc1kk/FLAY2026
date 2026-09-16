@@ -11,7 +11,7 @@ export default function Footer() {
 
                     <span className="footer__text">FLAY 2026 • Eternity</span>
                     
-                    <ButtonLink to={'/'} className="footer__link button-text">
+                    <ButtonLink href={'https://t.me/flayof'} className="footer__link button-text" aria-label="Telegram">
                         <img src={telegramIcon} width={32} height={32} loading='lazy' alt="Telegram" className="footer__link-icon"/>
                     </ButtonLink>
                 </div>

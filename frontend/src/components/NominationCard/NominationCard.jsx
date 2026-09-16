@@ -5,7 +5,7 @@ import plusBlackIcon from "../../assets/images/Vote/plus-black.png";
 export default function NominationCard({ number, title }) {
     return (
         <>
-            <ButtonLink to={'/'} className='nomination-card'>
+            <ButtonLink to={`/nominations/${number}`} className='nomination-card'>
                 <div className="nomination-card__inner">
                     <header className="nomination-card__header">
                         <span className="nomination-card__number">{String(number).padStart(2, '0')}</span>

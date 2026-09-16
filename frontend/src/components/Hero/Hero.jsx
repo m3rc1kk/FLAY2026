@@ -8,18 +8,22 @@ import backgroundImage from '../../assets/images/Hero/back.png';
 export default function Hero() {
     return (
         <>
-            <div className="hero container">
+            <div className="hero container" id="hero">
                 <div className="hero__inner">
 
                     <div className="hero__body">
                         <div className="hero__text">
-                            <h1 className="hero__title">FLAY</h1>
+                            <h1 className="hero__title" aria-label="FLAY">
+                                {'FLAY'.split('').map((letter, index) => (
+                                    <span key={index} className="hero__title-letter" style={{ '--i': index }} aria-hidden="true">{letter}</span>
+                                ))}
+                            </h1>
                             <h2 className="hero__year">20<span className="hero__year--green">26</span></h2>
                         </div>
 
                         <div className="hero__buttons">
-                            <ButtonLink to={'/'} className={'hero__button'}>Голосовать <img src={voteIcon} width={24} height={24} loading={'lazy'} alt="Vote" className="hero__button-icon"/></ButtonLink>
-                            <ButtonLink to={'/'} className={'hero__button button-light'}>О премии <img src={aboutIcon} width={24} height={24} loading={'lazy'} alt="About" className="hero__button-icon"/></ButtonLink>
+                            <ButtonLink href={'#nominations'} className={'hero__button'}>Голосовать <img src={voteIcon} width={24} height={24} loading={'lazy'} alt="Vote" className="hero__button-icon"/></ButtonLink>
+                            <ButtonLink href={'#about'} className={'hero__button button-light'}>О премии <img src={aboutIcon} width={24} height={24} loading={'lazy'} alt="About" className="hero__button-icon"/></ButtonLink>
                         </div>
                     </div>
 

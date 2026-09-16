@@ -14,21 +14,21 @@ export default function Header() {
                 <nav className="header__nav">
                     <ul className="header__nav-list">
                         <li className="header__nav-item">
-                            <ButtonLink to={'/'} className={'header__nav-link button-text'}>Главная</ButtonLink>
+                            <ButtonLink href={'#hero'} className={'header__nav-link button-text'}>Главная</ButtonLink>
                         </li>
                         <li className="header__nav-item">
-                            <ButtonLink to={'/'} className={'header__nav-link button-text'}>О нас</ButtonLink>
+                            <ButtonLink href={'#about'} className={'header__nav-link button-text'}>О нас</ButtonLink>
                         </li>
                         <li className="header__nav-item">
-                            <ButtonLink to={'/'} className={'header__nav-link button-text'}>Победители</ButtonLink>
+                            <ButtonLink href={'#winners'} className={'header__nav-link button-text'}>Победители</ButtonLink>
                         </li>
                         <li className="header__nav-item">
-                            <ButtonLink to={'/'} className={'header__nav-link button-text'}>Голосование</ButtonLink>
+                            <ButtonLink href={'#nominations'} className={'header__nav-link button-text'}>Голосование</ButtonLink>
                         </li>
                     </ul>
                 </nav>
 
-                <ButtonLink className="header__login" to="/">Войти <img src={telegramIcon} width={16} height={16} loading={'lazy'} alt="Telegram" className="header__login-icon"/></ButtonLink>
+                <ButtonLink className="header__login" to="/auth">Войти <img src={telegramIcon} width={16} height={16} loading={'lazy'} alt="Telegram" className="header__login-icon"/></ButtonLink>
 
             </div>
         </header>

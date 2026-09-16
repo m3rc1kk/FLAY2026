@@ -3,15 +3,29 @@
   height: 100%;
   padding-inline: 0;
   overflow: hidden;
+  transition:
+    background-color .5s cubic-bezier(.2, .8, .2, 1),
+    color .5s cubic-bezier(.2, .8, .2, 1),
+    box-shadow .5s ease;
 
   &:nth-child(odd) {
     background: var(--color-accent);
     color: var(--color-accent-dark-alt);
+
+    @include hover {
+      background: var(--color-dark);
+      color: var(--color-accent);
+    }
   }
 
   &:nth-child(even) {
     background: var(--color-dark);
     color: var(--color-accent);
+
+    @include hover {
+      background: var(--color-accent);
+      color: var(--color-accent-dark-alt);
+    }
   }
 
   &:nth-child(even) &__number {
@@ -39,6 +53,11 @@
     color: transparent;
     -webkit-text-stroke: 2px var(--color-accent-dark);
     opacity: .4;
+    display: inline-block;
+    transition:
+      -webkit-text-stroke-color .5s ease,
+      opacity .5s ease,
+      transform .7s cubic-bezier(.2, .8, .2, 1);
 
     @include desktop {
       font-size: 220px;
@@ -76,9 +95,15 @@
     left: 50%;
     transform: translate(-50%, -50%);
 
+    display: grid;
+
     &-image {
+      grid-area: 1 / 1;
       width: 100px;
       height: auto;
+      transition:
+        opacity .5s ease,
+        transform .7s cubic-bezier(.2, .8, .2, 1);
 
       @include desktop {
         width: 80px;
@@ -96,11 +121,56 @@
   }
 
   &:nth-child(odd) &__decoration-image--on-dark {
-    display: none;
+    opacity: 0;
   }
 
   &:nth-child(even) &__decoration-image--on-light {
-    display: none;
+    opacity: 0;
+  }
+
+  @include hover {
+    box-shadow: none;
+
+    .nomination-card__number {
+      opacity: .7;
+      transform: translate(-16px, 16px);
+    }
+
+    .nomination-card__decoration-image {
+      transform: rotate(90deg);
+    }
+  }
+
+  &:nth-child(odd) {
+    @include hover {
+      .nomination-card__number {
+        -webkit-text-stroke-color: rgba(var(--color-accent-rgb), 1);
+      }
+
+      .nomination-card__decoration-image--on-light {
+        opacity: 0;
+      }
+
+      .nomination-card__decoration-image--on-dark {
+        opacity: 1;
+      }
+    }
+  }
+
+  &:nth-child(even) {
+    @include hover {
+      .nomination-card__number {
+        -webkit-text-stroke-color: var(--color-accent-dark);
+      }
+
+      .nomination-card__decoration-image--on-light {
+        opacity: 1;
+      }
+
+      .nomination-card__decoration-image--on-dark {
+        opacity: 0;
+      }
+    }
   }
 
 }
