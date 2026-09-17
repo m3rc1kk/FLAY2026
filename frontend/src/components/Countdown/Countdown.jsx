@@ -2,16 +2,19 @@ import { Fragment, useEffect, useState } from 'react';
 
 const pad = (value) => String(value).padStart(2, '0');
 
-const getTimeLeft = (end) => Math.max(0, end - Date.now());
-
-export default function Countdown({ endsAt }) {
+export default function Countdown({ startsAt, endsAt }) {
+    const start = startsAt ? new Date(startsAt).getTime() : null;
     const end = new Date(endsAt).getTime();
-    const [left, setLeft] = useState(() => getTimeLeft(end));
+    const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
-        const timer = setInterval(() => setLeft(getTimeLeft(end)), 1000);
+        const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [end]);
+    }, []);
+
+    const isUpcoming = start !== null && now < start;
+    const left = Math.max(0, (isUpcoming ? start : end) - now);
+    const label = isUpcoming ? 'ДО НАЧАЛА ГОЛОСОВАНИЯ' : 'ДО КОНЦА ГОЛОСОВАНИЯ';
 
     if (left === 0) {
         return (
@@ -30,8 +33,8 @@ export default function Countdown({ endsAt }) {
     ];
 
     return (
-        <div className="countdown" role="timer" aria-label="До конца голосования">
-            <span className="countdown__label" aria-hidden="true">ДО КОНЦА ГОЛОСОВАНИЯ</span>
+        <div className="countdown" role="timer" aria-label={label.toLowerCase()}>
+            <span className="countdown__label" aria-hidden="true">{label}</span>
 
             <div className="countdown__units" aria-hidden="true">
                 {units.map((unit, index) => (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ButtonLink from '../Button/Button.jsx';
 import Logo from '../Logo/Logo.jsx';
+import { logout, useAuth } from '../../data/auth.js';
 import telegramIcon from '../../assets/images/Header/telegram.svg'
 
 const LINKS = [
@@ -12,6 +13,7 @@ const LINKS = [
 
 export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { user } = useAuth();
 
     useEffect(() => {
         if (!isMenuOpen) return;
@@ -57,7 +59,11 @@ export default function Header() {
                 </nav>
 
                 <div className="header__actions">
-                    <ButtonLink className="header__login" to="/auth">Войти <img src={telegramIcon} width={16} height={16} loading={'lazy'} alt="Telegram" className="header__login-icon"/></ButtonLink>
+                    {user ? (
+                        <ButtonLink type="button" className="button__link button-light header__login header__logout" onClick={logout}>Выйти</ButtonLink>
+                    ) : (
+                        <ButtonLink className="header__login" to="/auth">Войти <img src={telegramIcon} width={16} height={16} loading={'lazy'} alt="Telegram" className="header__login-icon"/></ButtonLink>
+                    )}
 
                     <button
                         type="button"
@@ -88,7 +94,11 @@ export default function Header() {
                 </nav>
 
                 <div className="mobile-menu__footer">
-                    <ButtonLink className="mobile-menu__login" to="/auth">Войти через Telegram <img src={telegramIcon} width={20} height={20} loading={'lazy'} alt="" className="header__login-icon"/></ButtonLink>
+                    {user ? (
+                        <ButtonLink type="button" className="button__link button-light mobile-menu__login header__logout" onClick={() => { closeMenu(); logout(); }}>Выйти</ButtonLink>
+                    ) : (
+                        <ButtonLink className="mobile-menu__login" to="/auth">Войти через Telegram <img src={telegramIcon} width={20} height={20} loading={'lazy'} alt="" className="header__login-icon"/></ButtonLink>
+                    )}
                     <a href="https://t.me/flayof" target="_blank" rel="noopener noreferrer" className="mobile-menu__telegram">t.me/flayof</a>
                 </div>
             </div>

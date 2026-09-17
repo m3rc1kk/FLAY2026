@@ -2,12 +2,31 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import NomineeCard from "../../components/NomineeCard/NomineeCard.jsx";
 import LogoMark from "../../components/LogoMark/LogoMark.jsx";
-import { findNomination, nominations } from "../../data/nominations.js";
-import { removeVote, saveVote, useVotes } from "../../data/votes.js";
+import VoteNotice from "../../components/VoteNotice/VoteNotice.jsx";
+import { findNomination, useNominations } from "../../data/nominations.js";
+import { loadVotes, removeVote, saveVote, useVotes } from "../../data/votes.js";
+import { useAuth } from "../../data/auth.js";
+import { getVotingPhase, loadVoting, useVoting } from "../../data/voting.js";
 import closeIcon from '../../assets/images/Nominee/close.svg'
 import nomineeExample from '../../assets/images/Nominee/nominee-example.png'
 
 const pad = (value) => String(value).padStart(2, '0');
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getVoteBlocker = (auth, voting) => {
+    if (auth.status !== 'authenticated') return 'auth';
+    if (auth.user.vote_restriction) return auth.user.vote_restriction;
+    const phase = getVotingPhase(voting);
+    return phase === 'active' ? null : phase;
+};
+
+const getErrorNotice = (error, voting) => {
+    if (error.status === 401) return 'auth';
+    if (error.code === 'voting_closed') return getVotingPhase(voting) === 'upcoming' ? 'upcoming' : 'finished';
+    if (error.code === 'banned' || error.code === 'not_allowed') return error.code;
+    return 'error';
+};
 
 function ArrowIcon({ className = '' }) {
     return (
@@ -17,43 +36,88 @@ function ArrowIcon({ className = '' }) {
     );
 }
 
-function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onClose, onGo }) {
+function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, direction, onClose, onGo }) {
     const votes = useVotes();
-    const voteTimerRef = useRef(null);
-    const savedNominee = nomination.nominees.find((nominee) => nominee.number === votes[nomination.number]) ?? null;
+    const auth = useAuth();
+    const voting = useVoting();
+    const pendingRef = useRef(false);
+    const savedNominee = nomination.nominees.find((nominee) => nominee.id === votes[nomination.id]) ?? null;
+    const savedId = savedNominee?.id ?? null;
 
     const [selected, setSelected] = useState(savedNominee);
     const [barNominee, setBarNominee] = useState(savedNominee);
     const [status, setStatus] = useState(savedNominee ? 'voted' : 'idle');
+    const [notice, setNotice] = useState(null);
+    const [syncedId, setSyncedId] = useState(savedId);
 
-    const index = nominations.findIndex((item) => item.number === nomination.number);
+    if (savedId !== syncedId) {
+        setSyncedId(savedId);
+        if (status === 'idle' && savedNominee) {
+            setSelected(savedNominee);
+            setBarNominee(savedNominee);
+            setStatus('voted');
+        }
+        if (status === 'voted' && !savedNominee) {
+            setSelected(null);
+            setStatus('idle');
+        }
+    }
+
+    const index = nominations.findIndex((item) => item.id === nomination.id);
     const previous = nominations[(index - 1 + nominations.length) % nominations.length];
     const next = nominations[(index + 1) % nominations.length];
     const isLast = index === nominations.length - 1;
 
     const select = useCallback((nominee) => {
         if (status !== 'idle') return;
-        setSelected((current) => (current?.number === nominee.number ? null : nominee));
+        setSelected((current) => (current?.id === nominee.id ? null : nominee));
         setBarNominee(nominee);
+        setNotice(null);
     }, [status]);
 
-    const cancel = useCallback(() => setSelected(null), []);
+    const cancel = useCallback(() => {
+        setSelected(null);
+        setNotice(null);
+    }, []);
 
-    const vote = useCallback(() => {
-        if (!selected) return;
+    const vote = useCallback(async () => {
+        if (!selected || pendingRef.current) return;
+
+        const blocker = getVoteBlocker(auth, voting);
+        if (blocker) {
+            setNotice(blocker);
+            return;
+        }
+
+        pendingRef.current = true;
+        setNotice(null);
         setStatus('sending');
-        voteTimerRef.current = setTimeout(() => {
-            saveVote(nomination.number, selected.number);
+        try {
+            await Promise.all([saveVote(nomination.id, selected.id), wait(1100)]);
             setStatus('voted');
-        }, 1100);
-    }, [nomination, selected]);
+        } catch (error) {
+            setStatus('idle');
+            setNotice(getErrorNotice(error, voting));
+            if (error.code === 'already_voted') loadVotes();
+            if (error.code === 'voting_closed') loadVoting();
+        } finally {
+            pendingRef.current = false;
+        }
+    }, [auth, voting, nomination, selected]);
 
-    const unvote = useCallback(() => {
-        removeVote(nomination.number);
-        setStatus('idle');
-    }, [nomination]);
-
-    useEffect(() => () => clearTimeout(voteTimerRef.current), []);
+    const unvote = useCallback(async () => {
+        if (pendingRef.current) return;
+        pendingRef.current = true;
+        try {
+            await removeVote(nomination.id);
+            setStatus('idle');
+        } catch (error) {
+            setNotice(getErrorNotice(error, voting));
+            if (error.status === 404) loadVotes();
+        } finally {
+            pendingRef.current = false;
+        }
+    }, [nomination, voting]);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
@@ -67,8 +131,8 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
             }
 
             if (status === 'sending' || event.target.closest?.('input, textarea')) return;
-            if (event.key === 'ArrowRight') onGo(next.number, 1);
-            if (event.key === 'ArrowLeft') onGo(previous.number, -1);
+            if (event.key === 'ArrowRight') onGo(next.id, 1);
+            if (event.key === 'ArrowLeft') onGo(previous.id, -1);
         };
         document.addEventListener('keydown', handleKeyDown);
 
@@ -94,10 +158,10 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
                     </div>
 
                     <div className="nominees__header-controls">
-                        <button type="button" className="nominees__arrow nominees__arrow--prev" onClick={() => onGo(previous.number, -1)} disabled={status === 'sending'} aria-label={`Предыдущая категория: ${previous.title}`}>
+                        <button type="button" className="nominees__arrow nominees__arrow--prev" onClick={() => onGo(previous.id, -1)} disabled={status === 'sending'} aria-label={`Предыдущая категория: ${previous.title}`}>
                             <ArrowIcon />
                         </button>
-                        <button type="button" className="nominees__arrow" onClick={() => onGo(next.number, 1)} disabled={status === 'sending'} aria-label={`Следующая категория: ${next.title}`}>
+                        <button type="button" className="nominees__arrow" onClick={() => onGo(next.id, 1)} disabled={status === 'sending'} aria-label={`Следующая категория: ${next.title}`}>
                             <ArrowIcon />
                         </button>
                         <button type="button" className="nominees__header-close" onClick={onClose} ref={closeRef} aria-label="Закрыть">
@@ -110,12 +174,12 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
                     {nominations.map((item) => (
                         <button
                             type="button"
-                            key={item.number}
-                            className={`nominees__step${item.number === nomination.number ? ' is-current' : ''}${votes[item.number] !== undefined ? ' is-done' : ''}`}
-                            onClick={() => onGo(item.number, item.number > nomination.number ? 1 : -1)}
-                            disabled={status === 'sending' || item.number === nomination.number}
+                            key={item.id}
+                            className={`nominees__step${item.id === nomination.id ? ' is-current' : ''}${votes[item.id] !== undefined ? ' is-done' : ''}`}
+                            onClick={() => onGo(item.id, item.number > nomination.number ? 1 : -1)}
+                            disabled={status === 'sending' || item.id === nomination.id}
                             aria-label={item.title}
-                            aria-current={item.number === nomination.number ? 'step' : undefined}
+                            aria-current={item.id === nomination.id ? 'step' : undefined}
                         >
                             <span className="nominees__step-bar" />
                         </button>
@@ -126,13 +190,13 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
                     <div className={`nominees__cards${selected ? ' has-selection' : ''}`}>
                         {nomination.nominees.map((nominee, cardIndex) => (
                             <NomineeCard
-                                key={nominee.number}
+                                key={nominee.id}
                                 index={cardIndex}
                                 name={nominee.name}
                                 number={nominee.number}
                                 image={nominee.image}
-                                isSelected={selected?.number === nominee.number}
-                                isVoted={status === 'voted' && selected?.number === nominee.number}
+                                isSelected={selected?.id === nominee.id}
+                                isVoted={status === 'voted' && selected?.id === nominee.id}
                                 isLocked={status !== 'idle'}
                                 onSelect={() => select(nominee)}
                             />
@@ -143,7 +207,7 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
                         <LogoMark className="nominees__empty-mark" />
                         <span className="nominees__empty-title">Кандидаты появятся позже</span>
                         <span className="nominees__empty-text">Список для этой категории ещё собирается. Загляни в следующую.</span>
-                        <button type="button" className="nominees-vote__submit nominees__empty-button" onClick={() => onGo(next.number, 1)}>
+                        <button type="button" className="nominees-vote__submit nominees__empty-button" onClick={() => onGo(next.id, 1)}>
                             <span className="nominees-vote__submit-text">{next.title}</span>
                             <ArrowIcon className="nominees-vote__submit-icon" />
                         </button>
@@ -155,12 +219,16 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
                 <div className="nominees-vote__backdrop" />
 
                 <div className="nominees-vote__inner container">
+                    {notice && isBarVisible && (
+                        <VoteNotice type={notice} telegramId={auth.user?.telegram_id} onClose={() => setNotice(null)} />
+                    )}
+
                     <div className="nominees-vote__line">
                         <span className="nominees-vote__line-fill" />
                     </div>
 
                     <div className="nominees-vote__body">
-                        <div className="nominees-vote__nominee" key={barNominee?.number}>
+                        <div className="nominees-vote__nominee" key={barNominee?.id}>
                             <span className="nominees-vote__thumb">
                                 <img src={barNominee?.image ?? nomineeExample} width={72} height={88} alt="" className="nominees-vote__thumb-image"/>
                             </span>
@@ -179,7 +247,7 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
                             {status === 'voted' ? (
                                 <>
                                     <button type="button" className="nominees-vote__cancel" onClick={unvote}>Отменить голос</button>
-                                    <button type="button" className="nominees-vote__submit" onClick={isLast ? onClose : () => onGo(next.number, 1)}>
+                                    <button type="button" className="nominees-vote__submit" onClick={isLast ? onClose : () => onGo(next.id, 1)}>
                                         <span className="nominees-vote__submit-text">{isLast ? 'К номинациям' : <>Следующая<span className="hidden-mobile"> категория</span></>}</span>
                                         <ArrowIcon className="nominees-vote__submit-icon" />
                                     </button>
@@ -202,7 +270,7 @@ function NomineesBody({ nomination, titleId, closeRef, isSwitch, direction, onCl
 }
 
 export default function Nominees() {
-    const { number } = useParams();
+    const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const titleId = useId();
@@ -210,7 +278,9 @@ export default function Nominees() {
     const closeRef = useRef(null);
     const closeTimerRef = useRef(null);
     const hasLeftRef = useRef(false);
-    const nomination = findNomination(number);
+    const { items: nominations, status } = useNominations();
+    const nomination = findNomination(nominations, id);
+    const hasNomination = Boolean(nomination);
 
     const [isClosing, setIsClosing] = useState(false);
     const [direction, setDirection] = useState(1);
@@ -246,7 +316,7 @@ export default function Nominees() {
         const modal = modalRef.current;
         if (!modal) return;
 
-        const card = document.querySelector(`.nomination-card[href$="/nominations/${number}"]`);
+        const card = document.querySelector(`.nomination-card[href$="/nominations/${id}"]`);
         const rect = card?.getBoundingClientRect();
         const isVisible = rect && rect.bottom > 0 && rect.top < window.innerHeight;
 
@@ -257,9 +327,7 @@ export default function Nominees() {
         modal.style.setProperty('--origin-y', `${y}px`);
         modal.previousElementSibling?.style.setProperty('--origin-x', `${x}px`);
         modal.previousElementSibling?.style.setProperty('--origin-y', `${y}px`);
-    }, [number]);
-
-    const hasNomination = Boolean(nomination);
+    }, [id, hasNomination]);
 
     useEffect(() => {
         if (!hasNomination) return;
@@ -280,7 +348,7 @@ export default function Nominees() {
         if (event.animationName === 'nominees-modal-out') leave();
     };
 
-    if (!nomination) return <Navigate to="/" replace />;
+    if (!nomination) return status === 'loading' ? null : <Navigate to="/" replace />;
 
     return (
         <>
@@ -295,7 +363,8 @@ export default function Nominees() {
                 onAnimationEnd={handleAnimationEnd}
             >
                 <NomineesBody
-                    key={nomination.number}
+                    key={nomination.id}
+                    nominations={nominations}
                     nomination={nomination}
                     titleId={titleId}
                     closeRef={closeRef}

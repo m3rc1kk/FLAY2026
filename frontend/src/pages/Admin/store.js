@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { nominations as siteNominations } from '../../data/nominations.js';
+import { nominations as siteNominations } from './siteNominations.js';
 import { onlineUsers, users, voting } from './mocks.js';
 import nomineeExample from '../../assets/images/Nominee/nominee-example.png';
 

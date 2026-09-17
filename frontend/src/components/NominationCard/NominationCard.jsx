@@ -3,12 +3,12 @@ import plusIcon from "../../assets/images/Vote/plus.png";
 import plusBlackIcon from "../../assets/images/Vote/plus-black.png";
 import { useVotes } from "../../data/votes.js";
 
-export default function NominationCard({ number, title }) {
-    const isVoted = useVotes()[number] !== undefined;
+export default function NominationCard({ id, number, title }) {
+    const isVoted = useVotes()[id] !== undefined;
 
     return (
         <>
-            <ButtonLink to={`/nominations/${number}`} className={`nomination-card${isVoted ? ' is-voted' : ''}`}>
+            <ButtonLink to={`/nominations/${id}`} className={`nomination-card${isVoted ? ' is-voted' : ''}`}>
                 <div className="nomination-card__inner">
                     {isVoted && (
                         <span className="nomination-card__badge">

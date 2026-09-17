@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { nominations } from '../../../data/nominations.js';
-import { events as initialEvents, findUser, nominationTurnout, onlineUsers as initialOnline, pastDayVotes, stats as initialStats, users } from '../mocks.js';
+import { events, findUser, nominationTurnout, onlineUsers as online, pastDayVotes, stats } from '../mocks.js';
 import { DAY, formatDuration, getVotingDays, getVotingStatus, startOfDay, useAdminStore } from '../store.js';
 
 const initials = (name) => name.split(' ').map((part) => part[0]).join('').slice(0, 2);
@@ -54,9 +53,6 @@ function EventText({ event }) {
 export default function Dashboard() {
     const voting = useAdminStore((state) => state.voting);
     const [now, setNow] = useState(() => Date.now());
-    const [stats, setStats] = useState(initialStats);
-    const [online, setOnline] = useState(initialOnline);
-    const [events, setEvents] = useState(initialEvents);
 
     useEffect(() => {
         const clock = setInterval(() => setNow(Date.now()), 30000);
@@ -64,34 +60,6 @@ export default function Dashboard() {
     }, []);
 
     const status = getVotingStatus(voting, now);
-
-    useEffect(() => {
-        if (status !== 'active') return undefined;
-
-        const tick = setInterval(() => {
-            const user = users[Math.floor(Math.random() * users.length)];
-            const nomination = nominations[Math.floor(Math.random() * nominations.length)];
-            const candidate = nomination.nominees[Math.floor(Math.random() * nomination.nominees.length)];
-
-            setEvents((current) => [
-                { id: Date.now(), type: 'vote', userId: user.id, nomination: nomination.title, nominee: candidate?.name ?? null, at: Date.now() },
-                ...current,
-            ].slice(0, 8));
-
-            setStats((current) => ({ ...current, totalVotes: current.totalVotes + 1, votesToday: current.votesToday + 1 }));
-
-            setOnline((current) => {
-                if (current.includes(user.id)) {
-                    return Math.random() > .6 && current.length > 3 ? current.slice(1) : current;
-                }
-                return [user.id, ...current].slice(0, 9);
-            });
-
-            setNow(Date.now());
-        }, 9000);
-
-        return () => clearInterval(tick);
-    }, [status]);
 
     const totalDays = getVotingDays(voting);
     const firstDay = startOfDay(voting.startsAt);

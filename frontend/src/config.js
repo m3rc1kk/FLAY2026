@@ -1,1 +1,0 @@
-export const VOTING_ENDS_AT = '2026-12-25T23:59:59+03:00';

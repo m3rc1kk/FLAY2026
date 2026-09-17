@@ -1,4 +1,4 @@
-import { nominations } from '../../data/nominations.js';
+import { nominations } from './siteNominations.js';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;

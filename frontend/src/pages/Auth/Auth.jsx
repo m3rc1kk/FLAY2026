@@ -1,9 +1,60 @@
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import LogoMark from "../../components/LogoMark/LogoMark.jsx";
 import ButtonLink from "../../components/Button/Button.jsx";
+import { loginWithTelegram, useAuth } from "../../data/auth.js";
 import telegramIcon from '../../assets/images/Auth/telegram.svg'
 import backgroundImage from '../../assets/images/Auth/back.png'
 
+const TELEGRAM_BOT_ID = import.meta.env.VITE_TELEGRAM_BOT_ID;
+const TELEGRAM_SCRIPT_ID = 'telegram-login-script';
+
+const loadTelegramScript = () => {
+    if (document.getElementById(TELEGRAM_SCRIPT_ID)) return;
+    const script = document.createElement('script');
+    script.id = TELEGRAM_SCRIPT_ID;
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.async = true;
+    document.body.appendChild(script);
+};
+
 export default function Auth() {
+    const navigate = useNavigate();
+    const { status } = useAuth();
+    const [isPending, setIsPending] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        if (TELEGRAM_BOT_ID) loadTelegramScript();
+    }, []);
+
+    const login = () => {
+        if (!TELEGRAM_BOT_ID) {
+            if (import.meta.env.DEV) navigate('/auth/dev');
+            return;
+        }
+
+        if (!window.Telegram?.Login) {
+            setError('Telegram ещё загружается, попробуй через секунду');
+            return;
+        }
+
+        setError(null);
+        window.Telegram.Login.auth({ bot_id: TELEGRAM_BOT_ID }, async (data) => {
+            if (!data) return;
+            setIsPending(true);
+            try {
+                await loginWithTelegram(data);
+                navigate('/', { replace: true });
+            } catch {
+                setError('Не получилось войти. Попробуй ещё раз');
+                setIsPending(false);
+            }
+        });
+    };
+
+    if (status === 'authenticated' && !isPending) return <Navigate to="/" replace />;
+
     return (
         <>
             <div className="auth">
@@ -20,10 +71,11 @@ export default function Auth() {
                         </span>
                     </h1>
                     <span className="auth__description">Закрытое голосование • FLAY 2026 </span>
-                    <ButtonLink to={'/'} className={'auth__button'}>Войти через Telegram
+                    <ButtonLink type="button" onClick={login} disabled={isPending} className={'button__link auth__button'}>
+                        {isPending ? 'Входим' : 'Войти через Telegram'}
                         <img src={telegramIcon} width={24} height={24} loading='lazy' alt="Telegram" className="auth__button-icon"/>
                     </ButtonLink>
-
+                    {error && <span className="auth__error" role="alert">{error}</span>}
                 </div>
 
                 <div className="auth__background">

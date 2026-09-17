@@ -1,21 +1,24 @@
 import NominationCard from "../NominationCard/NominationCard.jsx";
-import { nominations } from "../../data/nominations.js";
+import { useNominations } from "../../data/nominations.js";
 import { useVotes } from "../../data/votes.js";
 import useInView from "../../hooks/useInView.js";
 import Countdown from "../Countdown/Countdown.jsx";
-import { VOTING_ENDS_AT } from "../../config.js";
+import { useVoting } from "../../data/voting.js";
 
 export default function Nominations() {
     const [sectionRef, inView] = useInView();
+    const { items: nominations } = useNominations();
+    const voting = useVoting();
     const votes = useVotes();
     const total = nominations.length;
-    const done = nominations.filter((nomination) => votes[nomination.number] !== undefined).length;
+    const done = nominations.filter((nomination) => votes[nomination.id] !== undefined).length;
+    const isComplete = total > 0 && done === total;
 
     return (
         <>
             <section className={`section nominations__section container${inView ? ' is-inview' : ''}`} id="nominations" ref={sectionRef}>
                 <header className="nominations__header">
-                    <div className={`nominations__progress${done === total ? ' is-complete' : ''}`}>
+                    <div className={`nominations__progress${isComplete ? ' is-complete' : ''}`}>
                         <ul
                             className="nominations__progress-track"
                             role="progressbar"
@@ -26,14 +29,14 @@ export default function Nominations() {
                         >
                             {nominations.map((nomination, index) => (
                                 <li
-                                    key={nomination.number}
-                                    className={`nominations__progress-segment${votes[nomination.number] !== undefined ? ' is-done' : ''}`}
+                                    key={nomination.id}
+                                    className={`nominations__progress-segment${votes[nomination.id] !== undefined ? ' is-done' : ''}`}
                                     style={{ '--i': index }}
                                 />
                             ))}
                         </ul>
                         <span className="nominations__progress-label">
-                            {done === total ? 'ВСЕ НОМИНАЦИИ ПРОЙДЕНЫ' : `${done} ИЗ ${total} НОМИНАЦИЙ ПРОЙДЕНО`}
+                            {isComplete ? 'ВСЕ НОМИНАЦИИ ПРОЙДЕНЫ' : `${done} ИЗ ${total} НОМИНАЦИЙ ПРОЙДЕНО`}
                         </span>
                     </div>
 
@@ -43,14 +46,15 @@ export default function Nominations() {
                         <span aria-hidden="true">АНИЕ</span>
                     </h2>
 
-                    <Countdown endsAt={VOTING_ENDS_AT} />
+                    {voting?.ends_at && <Countdown startsAt={voting.starts_at} endsAt={voting.ends_at} />}
                 </header>
 
                 <div className="nominations">
                     <div className="nominations__inner">
                         {nominations.map((nomination) => (
                             <NominationCard
-                                key={nomination.number}
+                                key={nomination.id}
+                                id={nomination.id}
                                 number={nomination.number}
                                 title={nomination.title}
                             />

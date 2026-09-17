@@ -1,43 +1,22 @@
-import { useSyncExternalStore } from 'react';
+import { api } from '../api/client.js';
+import createStore from './createStore.js';
 
-const STORAGE_KEY = 'flay-votes';
-const listeners = new Set();
+const store = createStore({});
 
-const read = () => {
-    try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
-    } catch {
-        return {};
-    }
+export const useVotes = () => store.use();
+
+export const loadVotes = () => api('/votes/')
+    .then((list) => store.set(Object.fromEntries(list.map((vote) => [vote.nomination, vote.candidate]))))
+    .catch(() => null);
+
+export const resetVotes = () => store.set({});
+
+export const saveVote = async (nominationId, candidateId) => {
+    await api('/votes/', { method: 'POST', body: { nomination: nominationId, candidate: candidateId } });
+    store.set((votes) => ({ ...votes, [nominationId]: candidateId }));
 };
 
-let votes = read();
-
-const subscribe = (listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
+export const removeVote = async (nominationId) => {
+    await api(`/votes/${nominationId}/`, { method: 'DELETE' });
+    store.set((votes) => Object.fromEntries(Object.entries(votes).filter(([key]) => Number(key) !== nominationId)));
 };
-
-const persist = () => {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(votes));
-    } catch {
-        return;
-    } finally {
-        listeners.forEach((listener) => listener());
-    }
-};
-
-export const removeVote = (nominationNumber) => {
-    const { [nominationNumber]: removed, ...rest } = votes;
-    if (removed === undefined) return;
-    votes = rest;
-    persist();
-};
-
-export const saveVote = (nominationNumber, nomineeNumber) => {
-    votes = { ...votes, [nominationNumber]: nomineeNumber };
-    persist();
-};
-
-export const useVotes = () => useSyncExternalStore(subscribe, () => votes);
