@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { events, findUser, nominationTurnout, onlineUsers as online, pastDayVotes, stats } from '../mocks.js';
-import { DAY, formatDuration, getVotingDays, getVotingStatus, startOfDay, useAdminStore } from '../store.js';
-
-const initials = (name) => name.split(' ').map((part) => part[0]).join('').slice(0, 2);
+import { DAY, formatDuration, getVotingDays, getVotingStatus, isOnline, isVotingScheduled, startOfDay, useAdminStore } from '../store.js';
+import { initials } from '../ui.jsx';
 
 const plural = (value, one, few, many) => {
     const mod10 = value % 10;
@@ -28,7 +26,7 @@ const formatDay = (date) => date.toLocaleDateString('ru-RU', { day: '2-digit', m
 const percent = (value, total) => (total ? Math.round((value / total) * 100) : 0);
 
 function EventText({ event }) {
-    const user = findUser(event.userId);
+    const user = { name: event.userName };
 
     if (event.type === 'join') {
         return <><b>{user?.name}</b> · первый вход на сайт</>;
@@ -38,13 +36,17 @@ function EventText({ event }) {
         return <><b>{user?.name}</b> · блокировка: {event.reason}</>;
     }
 
+    if (event.type === 'unban') {
+        return <><b>{user?.name}</b> · блокировка снята</>;
+    }
+
     if (event.type === 'revoke') {
-        return <><b>{user?.name}</b> · отмена голоса в «{event.nomination}»</>;
+        return <><b>{user?.name}</b> · отмена голоса в «{event.nomination ?? 'удалённая номинация'}»</>;
     }
 
     return (
         <>
-            <b>{user?.name}</b> · голос в «{event.nomination}»
+            <b>{user?.name}</b> · голос в «{event.nomination ?? 'удалённая номинация'}»
             {event.nominee && <span className="admin-feed__target"> за {event.nominee.toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase())}</span>}
         </>
     );
@@ -52,6 +54,9 @@ function EventText({ event }) {
 
 export default function Dashboard() {
     const voting = useAdminStore((state) => state.voting);
+    const nominations = useAdminStore((state) => state.nominations);
+    const users = useAdminStore((state) => state.users);
+    const events = useAdminStore((state) => state.events);
     const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
@@ -60,14 +65,38 @@ export default function Dashboard() {
     }, []);
 
     const status = getVotingStatus(voting, now);
+    const isScheduled = isVotingScheduled(voting);
+    const today = startOfDay(now);
 
-    const totalDays = getVotingDays(voting);
-    const firstDay = startOfDay(voting.startsAt);
-    const todayIndex = Math.floor((startOfDay(now) - firstDay) / DAY);
+    const votes = nominations.flatMap((nomination) => nomination.votes);
+    const votesByUser = {};
+    votes.forEach((vote) => {
+        votesByUser[vote.userId] = (votesByUser[vote.userId] ?? 0) + 1;
+    });
+    const online = users.filter((user) => isOnline(user));
+    const stats = {
+        totalUsers: users.length,
+        newToday: users.filter((user) => user.joinedAt >= today).length,
+        votedUsers: Object.keys(votesByUser).length,
+        completedUsers: nominations.length ? Object.values(votesByUser).filter((count) => count === nominations.length).length : 0,
+        totalVotes: votes.length,
+        votesToday: votes.filter((vote) => vote.at >= today).length,
+    };
+    const nominationTurnout = nominations.map((nomination) => ({ id: nomination.id, title: nomination.title, votes: nomination.votes.length }));
+
+    const totalDays = isScheduled ? getVotingDays(voting) : 0;
+    const firstDay = isScheduled ? startOfDay(voting.startsAt) : today;
+    const todayIndex = Math.floor((today - firstDay) / DAY);
+    const votesByDay = {};
+    votes.forEach((vote) => {
+        const index = Math.round((startOfDay(vote.at) - firstDay) / DAY);
+        votesByDay[index] = (votesByDay[index] ?? 0) + 1;
+    });
     const days = Array.from({ length: totalDays }, (_, index) => {
         const date = new Date(firstDay + index * DAY);
-        if (index === todayIndex && status === 'active') return { date, votes: stats.votesToday, state: 'today' };
-        if (index < todayIndex || status === 'finished') return { date, votes: pastDayVotes[index % pastDayVotes.length], state: 'past' };
+        const count = votesByDay[index] ?? 0;
+        if (index === todayIndex && status === 'active') return { date, votes: count, state: 'today' };
+        if (index < todayIndex || status === 'finished') return { date, votes: count, state: 'past' };
         return { date, votes: null, state: 'future' };
     });
     const isDense = totalDays > 10;
@@ -87,12 +116,12 @@ export default function Dashboard() {
                 <Link to="/admin/voting" className={`admin-status is-${status}`}>
                     <span className="admin-status__dot" />
                     <span className="admin-status__text">
-                        {status === 'upcoming' && 'Голосование скоро'}
+                        {status === 'upcoming' && (isScheduled ? 'Голосование скоро' : 'Сроки не заданы')}
                         {status === 'active' && 'Голосование идёт'}
                         {status === 'finished' && 'Голосование завершено'}
                     </span>
                     <span className="admin-status__meta">
-                        {status === 'upcoming' && `старт через ${formatDuration(voting.startsAt - now)}`}
+                        {status === 'upcoming' && (isScheduled ? `старт через ${formatDuration(voting.startsAt - now)}` : 'задать')}
                         {status === 'active' && `до конца ${formatDuration(voting.endsAt - now)}`}
                         {status === 'finished' && new Date(voting.endsAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -107,12 +136,9 @@ export default function Dashboard() {
                     </span>
                     <span className="admin-stat__value" key={online.length}>{online.length}</span>
                     <div className="admin-stat__avatars">
-                        {online.slice(0, 6).map((id) => {
-                            const user = findUser(id);
-                            return (
-                                <span className="admin-stat__avatar" key={id} title={user?.name}>{initials(user?.name ?? '')}</span>
-                            );
-                        })}
+                        {online.slice(0, 6).map((user) => (
+                            <span className="admin-stat__avatar" key={user.id} title={user.name}>{initials(user.name)}</span>
+                        ))}
                         {online.length > 6 && <span className="admin-stat__avatar admin-stat__avatar--more">+{online.length - 6}</span>}
                     </div>
                 </article>
@@ -149,7 +175,7 @@ export default function Dashboard() {
                         <h2 className="admin-card__title">Голоса по дням</h2>
                         <span className="admin-card__meta">
                             {status === 'active' && `день ${todayIndex + 1} из ${totalDays}`}
-                            {status === 'upcoming' && `${totalDays} ${plural(totalDays, 'день', 'дня', 'дней')}, старт через ${formatDuration(voting.startsAt - now)}`}
+                            {status === 'upcoming' && (isScheduled ? `${totalDays} ${plural(totalDays, 'день', 'дня', 'дней')}, старт через ${formatDuration(voting.startsAt - now)}` : 'сроки голосования не заданы')}
                             {status === 'finished' && `все ${totalDays} ${plural(totalDays, 'день', 'дня', 'дней')}`}
                         </span>
                     </header>
@@ -178,6 +204,13 @@ export default function Dashboard() {
                         <span className="admin-card__meta admin-card__meta--live">в реальном времени</span>
                     </header>
 
+                    {events.length === 0 && (
+                        <div className="admin-empty admin-empty--compact">
+                            <span className="admin-empty__title">Пока тихо</span>
+                            <span className="admin-empty__text">Здесь появятся входы, голоса и блокировки.</span>
+                        </div>
+                    )}
+
                     <ul className="admin-feed__list">
                         {events.map((event) => (
                             <li className={`admin-feed__item admin-feed__item--${event.type}`} key={event.id}>
@@ -201,7 +234,7 @@ export default function Dashboard() {
                         const value = percent(item.votes, stats.totalUsers);
                         const filled = Math.round(value / 5);
                         return (
-                            <li className="admin-turnout__row" key={item.number} style={{ '--i': index }}>
+                            <li className="admin-turnout__row" key={item.id} style={{ '--i': index }}>
                                 <span className="admin-turnout__title">{item.title}</span>
                                 <span className="admin-turnout__segments" aria-hidden="true">
                                     {Array.from({ length: 20 }, (_, segment) => (

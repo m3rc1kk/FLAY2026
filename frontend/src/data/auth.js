@@ -40,10 +40,6 @@ export const loginWithTelegram = async (payload) => startSession(
     await api('/auth/telegram/', { method: 'POST', body: payload }),
 );
 
-export const loginDev = async (payload) => startSession(
-    await api('/auth/telegram/dev/', { method: 'POST', body: payload }),
-);
-
 export const logout = async () => {
     const { refresh } = getTokens();
     if (refresh) await api('/auth/logout/', { method: 'POST', body: { refresh } }).catch(() => null);

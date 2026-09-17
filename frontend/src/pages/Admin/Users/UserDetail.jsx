@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
     BAN_REASONS,
     banUser,
+    fetchUserEvents,
     getUserVotes,
     isOnline,
     notify,
@@ -24,23 +25,20 @@ function Moderation({ user, votesCount }) {
 
     const finalReason = reason === 'other' ? custom.trim() : reason;
 
-    const ban = (event) => {
+    const ban = async (event) => {
         event.preventDefault();
         if (!finalReason) return;
-        banUser(user.id, finalReason, withVotes);
         setIsOpen(false);
-        notify(`Аккаунт заблокирован: ${user.name}`);
+        if (await banUser(user.id, finalReason, withVotes)) notify(`Аккаунт заблокирован: ${user.name}`);
     };
 
-    const unban = () => {
-        unbanUser(user.id);
-        notify(`Блокировка снята: ${user.name}`);
+    const unban = async () => {
+        if (await unbanUser(user.id)) notify(`Блокировка снята: ${user.name}`);
     };
 
-    const reset = () => {
-        resetUserVotes(user.id);
+    const reset = async () => {
         setIsConfirmingReset(false);
-        notify(`Голоса сброшены: ${user.name}`);
+        if (await resetUserVotes(user.id)) notify(`Голоса сброшены: ${user.name}`);
     };
 
     if (user.status === 'banned') {
@@ -131,8 +129,23 @@ export default function UserDetail() {
     const users = useAdminStore((state) => state.users);
     const nominations = useAdminStore((state) => state.nominations);
     const [confirmNomination, setConfirmNomination] = useState(null);
+    const [events, setEvents] = useState([]);
 
     const user = users.find((item) => item.id === Number(id));
+    const votesSignature = user ? getUserVotes(nominations, user.id).map((item) => item.vote?.id ?? 0).join() : '';
+
+    const userId = user?.id;
+    const historySignature = `${user?.status}-${user?.revokes}-${votesSignature}`;
+
+    useEffect(() => {
+        if (!userId) return;
+        let isActive = true;
+        fetchUserEvents(userId).then((items) => isActive && setEvents(items)).catch(() => null);
+        return () => {
+            isActive = false;
+        };
+    }, [userId, historySignature]);
+
     if (!user) return <Navigate to="/admin/users" replace />;
 
     const votes = getUserVotes(nominations, user.id);
@@ -140,20 +153,22 @@ export default function UserDetail() {
     const selfVote = done.find((item) => item.candidate?.name === user.name);
     const online = isOnline(user);
 
-    const history = [
-        { id: 'join', type: 'join', at: user.joinedAt, text: 'Первый вход на сайт' },
-        ...done.map((item) => ({ id: `vote-${item.nomination.number}`, type: 'vote', at: item.vote.at, text: <>Голос в «{item.nomination.title}» за <em>{item.candidate?.name}</em></> })),
-        ...(done.length ? Array.from({ length: user.revokes }, (_, index) => {
-            const item = done[index % done.length];
-            return { id: `revoke-${index}`, type: 'revoke', at: item.vote.at - (index + 1) * 7 * 60000, text: `Отмена голоса в «${item.nomination.title}»` };
-        }) : []),
-        ...(user.bannedAt ? [{ id: 'ban', type: 'ban', at: user.bannedAt, text: `Блокировка: ${user.banReason}` }] : []),
-    ].sort((a, b) => b.at - a.at);
+    const history = events.map((event) => ({
+        id: event.id,
+        type: event.type,
+        at: event.at,
+        text: {
+            join: 'Первый вход на сайт',
+            vote: <>Голос в «{event.nomination ?? 'удалённая номинация'}»{event.nominee && <> за <em>{event.nominee}</em></>}</>,
+            revoke: `Отмена голоса в «${event.nomination ?? 'удалённая номинация'}»`,
+            ban: `Блокировка: ${event.reason}`,
+            unban: 'Блокировка снята',
+        }[event.type],
+    }));
 
-    const removeVote = (item) => {
-        removeUserVote(user.id, item.nomination.number);
+    const removeVote = async (item) => {
         setConfirmNomination(null);
-        notify(`Голос в «${item.nomination.title}» сброшен`);
+        if (await removeUserVote(user.id, item.nomination.id)) notify(`Голос в «${item.nomination.title}» сброшен`);
     };
 
     return (
@@ -173,17 +188,27 @@ export default function UserDetail() {
                         {user.status === 'banned' ? 'Аккаунт заблокирован' : online ? 'Онлайн' : `Активность ${formatAgo(user.lastSeenAt)}`}
                     </span>
                     <h1 className="admin-page__title admin-page__title--wrap">{user.name}</h1>
-                    <a href={`https://t.me/${user.username}`} target="_blank" rel="noopener noreferrer" className="admin-user__username">
-                        @{user.username}
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
-                            <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                    </a>
+                    {user.username ? (
+                        <a href={`https://t.me/${user.username}`} target="_blank" rel="noopener noreferrer" className="admin-user__username">
+                            @{user.username} · ID {user.telegramId}
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+                                <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </a>
+                    ) : (
+                        <span className="admin-user__username">ID {user.telegramId}</span>
+                    )}
                 </div>
             </header>
 
-            {(selfVote || user.revokes >= 3) && (
+            {(selfVote || user.revokes >= 3 || !user.isAllowed) && (
                 <div className="admin-flags">
+                    {!user.isAllowed && (
+                        <span className="admin-flag">
+                            <span className="admin-flag__icon">!</span>
+                            Нет в списке доступа, голосовать не может
+                        </span>
+                    )}
                     {selfVote && (
                         <span className="admin-flag">
                             <span className="admin-flag__icon">!</span>
@@ -207,7 +232,7 @@ export default function UserDetail() {
                         <span className="admin-mini-stat__of">/{votes.length}</span>
                     </span>
                     <span className="admin-steps admin-steps--wide" aria-hidden="true">
-                        {votes.map((item) => <span className={`admin-steps__step${item.vote ? ' is-done' : ''}`} key={item.nomination.number} />)}
+                        {votes.map((item) => <span className={`admin-steps__step${item.vote ? ' is-done' : ''}`} key={item.nomination.id} />)}
                     </span>
                 </article>
                 <article className="admin-card admin-mini-stat">
@@ -236,9 +261,9 @@ export default function UserDetail() {
 
                     <ul className="admin-ballot__list">
                         {votes.map((item) => {
-                            const isConfirming = confirmNomination === item.nomination.number;
+                            const isConfirming = confirmNomination === item.nomination.id;
                             return (
-                                <li className={`admin-ballot__row${item.vote ? ' is-done' : ''}`} key={item.nomination.number}>
+                                <li className={`admin-ballot__row${item.vote ? ' is-done' : ''}`} key={item.nomination.id}>
                                     <span className="admin-ballot__check" aria-hidden="true">
                                         {item.vote && (
                                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
@@ -247,7 +272,7 @@ export default function UserDetail() {
                                         )}
                                     </span>
 
-                                    <Link to={`/admin/nominations/${item.nomination.number}`} className="admin-ballot__nomination">{item.nomination.title}</Link>
+                                    <Link to={`/admin/nominations/${item.nomination.id}`} className="admin-ballot__nomination">{item.nomination.title}</Link>
 
                                     {item.vote ? (
                                         isConfirming ? (
@@ -261,7 +286,7 @@ export default function UserDetail() {
                                                     {item.candidate?.name}
                                                     <span className="admin-ballot__time">{formatAgo(item.vote.at)}</span>
                                                 </span>
-                                                <button type="button" className="admin-icon-button" onClick={() => setConfirmNomination(item.nomination.number)} aria-label={`Сбросить голос в ${item.nomination.title}`} title="Сбросить голос">
+                                                <button type="button" className="admin-icon-button" onClick={() => setConfirmNomination(item.nomination.id)} aria-label={`Сбросить голос в ${item.nomination.title}`} title="Сбросить голос">
                                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
                                                         <path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>

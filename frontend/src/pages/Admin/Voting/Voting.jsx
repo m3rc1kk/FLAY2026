@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { DAY, formatDuration, getVotingStatus, notify, updateVoting, useAdminStore } from '../store.js';
+import { DAY, formatDuration, getVotingStatus, isVotingScheduled, notify, updateVoting, useAdminStore } from '../store.js';
 
 const HOUR = 60 * 60 * 1000;
 
 const toInputValue = (timestamp) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
     const pad = (value) => String(value).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -85,11 +86,10 @@ function ScheduleForm({ voting }) {
         setEnd(toInputValue(startsAt + days * DAY));
     };
 
-    const save = (event) => {
+    const save = async (event) => {
         event.preventDefault();
         if (error || !isDirty) return;
-        updateVoting({ startsAt, endsAt });
-        notify('Сроки голосования сохранены');
+        if (await updateVoting({ startsAt, endsAt })) notify('Сроки голосования сохранены');
     };
 
     const reset = () => {
@@ -156,38 +156,30 @@ export default function Voting() {
     }, []);
 
     const status = getVotingStatus(voting, now);
+    const isScheduled = isVotingScheduled(voting);
 
-    const run = (action) => {
+    const run = async (action) => {
         const current = Date.now();
-        if (action === 'start') {
-            updateVoting({ startsAt: current, endsAt: Math.max(voting.endsAt, current + DAY) });
-            notify('Голосование началось');
-        }
-        if (action === 'finish') {
-            updateVoting({ endsAt: current });
-            notify('Голосование завершено');
-        }
-        if (action === 'resume') {
-            updateVoting({ endsAt: current + DAY });
-            notify('Голосование возобновлено на сутки');
-        }
-        if (action === 'hour') {
-            updateVoting({ endsAt: voting.endsAt + HOUR });
-            notify('Голосование продлено на час');
-        }
-        if (action === 'day') {
-            updateVoting({ endsAt: voting.endsAt + DAY });
-            notify('Голосование продлено на сутки');
-        }
+        const actions = {
+            start: [{ startsAt: current, endsAt: Math.max(voting.endsAt ?? 0, current + DAY) }, 'Голосование началось'],
+            finish: [{ startsAt: Math.min(voting.startsAt, current - HOUR), endsAt: current }, 'Голосование завершено'],
+            resume: [{ endsAt: current + DAY }, 'Голосование возобновлено на сутки'],
+            hour: [{ endsAt: voting.endsAt + HOUR }, 'Голосование продлено на час'],
+            day: [{ endsAt: voting.endsAt + DAY }, 'Голосование продлено на сутки'],
+        };
+        const [patch, message] = actions[action];
         setConfirm(null);
+        if (await updateVoting(patch)) notify(message);
         setNow(Date.now());
     };
 
-    const countdown = status === 'upcoming'
-        ? `Старт через ${formatDuration(voting.startsAt - now)}`
-        : status === 'active'
-            ? `До конца ${formatDuration(voting.endsAt - now)}`
-            : `Закончилось ${formatDateTime(voting.endsAt)}`;
+    const countdown = !isScheduled
+        ? 'Задай сроки ниже или начни прямо сейчас'
+        : status === 'upcoming'
+            ? `Старт через ${formatDuration(voting.startsAt - now)}`
+            : status === 'active'
+                ? `До конца ${formatDuration(voting.endsAt - now)}`
+                : `Закончилось ${formatDateTime(voting.endsAt)}`;
 
     return (
         <div className="admin-voting">
@@ -205,7 +197,7 @@ export default function Voting() {
                             <span className="admin-voting-status__dot" />
                             {STATUS_COPY[status].short}
                         </span>
-                        <h2 className="admin-voting-status__title">{STATUS_COPY[status].label}</h2>
+                        <h2 className="admin-voting-status__title">{isScheduled ? STATUS_COPY[status].label : 'Сроки не заданы'}</h2>
                         <span className="admin-voting-status__countdown">{countdown}</span>
                     </div>
 
@@ -244,7 +236,7 @@ export default function Voting() {
                     </div>
                 </div>
 
-                <Timeline startsAt={voting.startsAt} endsAt={voting.endsAt} now={now} status={status} />
+                {isScheduled && <Timeline startsAt={voting.startsAt} endsAt={voting.endsAt} now={now} status={status} />}
             </section>
 
             <div className="admin-voting__grid">

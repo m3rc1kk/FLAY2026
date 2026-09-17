@@ -10,7 +10,7 @@ import NominationEdit from "../pages/Admin/Nominations/NominationEdit.jsx";
 import UsersList from "../pages/Admin/Users/UsersList.jsx";
 import UserDetail from "../pages/Admin/Users/UserDetail.jsx";
 import VotingSettings from "../pages/Admin/Voting/Voting.jsx";
-import DevAuth from "../pages/DevAuth/DevAuth.jsx";
+import Access from "../pages/Admin/Access/Access.jsx";
 
 export default function AppRouter() {
     return (
@@ -20,14 +20,14 @@ export default function AppRouter() {
                     <Route path="nominations/:id" element={<Nominees />} />
                 </Route>
                 <Route path="/auth" element={<Auth />} />
-                {import.meta.env.DEV && <Route path="/auth/dev" element={<DevAuth />} />}
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<Dashboard />} />
                     <Route path="nominations" element={<NominationsList />} />
-                    <Route path="nominations/:number" element={<NominationEdit />} />
+                    <Route path="nominations/:id" element={<NominationEdit />} />
                     <Route path="users" element={<UsersList />} />
                     <Route path="users/:id" element={<UserDetail />} />
                     <Route path="voting" element={<VotingSettings />} />
+                    <Route path="access" element={<Access />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
             </Routes>

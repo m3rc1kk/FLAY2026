@@ -49,7 +49,7 @@ export default function UsersList() {
 
     const votesByUser = {};
     published.forEach((nomination) => {
-        nomination.votes.forEach((vote) => {
+        nomination.allVotes.forEach((vote) => {
             votesByUser[vote.userId] = (votesByUser[vote.userId] ?? 0) + 1;
         });
     });
@@ -58,7 +58,7 @@ export default function UsersList() {
     const counts = {
         all: rows.length,
         online: rows.filter(({ user }) => isOnline(user)).length,
-        completed: rows.filter(({ votes }) => votes === published.length).length,
+        completed: rows.filter(({ votes }) => published.length > 0 && votes === published.length).length,
         idle: rows.filter(({ votes, user }) => votes === 0 && user.status !== 'banned').length,
         banned: rows.filter(({ user }) => user.status === 'banned').length,
     };
@@ -68,12 +68,12 @@ export default function UsersList() {
     const visible = rows
         .filter(({ user, votes }) => {
             if (filter === 'online') return isOnline(user);
-            if (filter === 'completed') return votes === published.length;
+            if (filter === 'completed') return published.length > 0 && votes === published.length;
             if (filter === 'idle') return votes === 0 && user.status !== 'banned';
             if (filter === 'banned') return user.status === 'banned';
             return true;
         })
-        .filter(({ user }) => !needle || user.name.toLowerCase().includes(needle) || user.username.toLowerCase().includes(needle))
+        .filter(({ user }) => !needle || user.name.toLowerCase().includes(needle) || user.username.toLowerCase().includes(needle) || String(user.telegramId).includes(needle))
         .sort((a, b) => {
             if (sort === 'votes') return b.votes - a.votes;
             if (sort === 'joined') return b.user.joinedAt - a.user.joinedAt;
@@ -125,7 +125,7 @@ export default function UsersList() {
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
                             <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm5-2 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                         </svg>
-                        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Имя или @username" className="admin-search__input" />
+                        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Имя, @username или ID" className="admin-search__input" />
                     </label>
                 </div>
             </div>
@@ -154,14 +154,14 @@ export default function UsersList() {
                                         <UserAvatar user={user} />
                                         <span className="admin-people__identity">
                                             <span className="admin-people__name">{user.name}</span>
-                                            <span className="admin-people__username">@{user.username}</span>
+                                            <span className="admin-people__username">{user.handle}</span>
                                         </span>
                                     </Link>
 
                                     <span className="admin-people__progress">
                                         <span className="admin-steps" aria-hidden="true">
                                             {published.map((nomination, step) => (
-                                                <span className={`admin-steps__step${step < votes ? ' is-done' : ''}`} key={nomination.number} />
+                                                <span className={`admin-steps__step${step < votes ? ' is-done' : ''}`} key={nomination.id} />
                                             ))}
                                         </span>
                                         <span className="admin-people__votes">
@@ -179,11 +179,13 @@ export default function UsersList() {
                                     <span className="admin-people__status">
                                         {user.status === 'banned'
                                             ? <span className="admin-badge admin-badge--banned">Блокировка</span>
-                                            : votes === published.length
-                                                ? <span className="admin-badge admin-badge--published">Всё пройдено</span>
-                                                : votes === 0
-                                                    ? <span className="admin-badge admin-badge--hidden">Без голосов</span>
-                                                    : <span className="admin-badge admin-badge--draft">В процессе</span>}
+                                            : !user.isAllowed
+                                                ? <span className="admin-badge admin-badge--hidden">Нет в списке</span>
+                                                : published.length > 0 && votes === published.length
+                                                    ? <span className="admin-badge admin-badge--published">Всё пройдено</span>
+                                                    : votes === 0
+                                                        ? <span className="admin-badge admin-badge--hidden">Без голосов</span>
+                                                        : <span className="admin-badge admin-badge--draft">В процессе</span>}
                                     </span>
                                 </li>
                             );

@@ -1,6 +1,12 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import LogoMark from '../../components/LogoMark/LogoMark.jsx';
-import { useAdminStore } from './store.js';
+import NotFound from '../NotFound/NotFound.jsx';
+import { logout, useAuth } from '../../data/auth.js';
+import { loadAdmin, refreshAdmin, useAdminStore } from './store.js';
+import { initials } from './ui.jsx';
+
+const REFRESH_INTERVAL = 20000;
 
 function Icon({ name }) {
     const paths = {
@@ -8,6 +14,9 @@ function Icon({ name }) {
         nominations: 'M6 3h12v4a6 6 0 0 1-12 0V3zm6 10v4m-4 4h8M6 5H3v1a3 3 0 0 0 3 3m12-4h3v1a3 3 0 0 1-3 3',
         voting: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
         users: 'M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m6.5-9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 19v-1a4 4 0 0 0-3-3.85M15.5 3.15a3.5 3.5 0 0 1 0 6.7',
+        access: 'M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3zm-3 9l2 2 4-4',
+        logout: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
+        django: 'M4 7h16M4 12h16M4 17h10m4 0h2',
         external: 'M14 4h6v6m0-6L10 14M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5',
     };
 
@@ -23,10 +32,19 @@ const NAV = [
     { to: '/admin/voting', label: 'Голосование', icon: 'voting' },
     { to: '/admin/nominations', label: 'Номинации', icon: 'nominations' },
     { to: '/admin/users', label: 'Пользователи', icon: 'users' },
+    { to: '/admin/access', label: 'Список доступа', icon: 'access' },
 ];
 
-export default function AdminLayout() {
+function AdminPanel({ user }) {
     const toast = useAdminStore((state) => state.toast);
+    const status = useAdminStore((state) => state.status);
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Админ';
+
+    useEffect(() => {
+        loadAdmin();
+        const timer = setInterval(refreshAdmin, REFRESH_INTERVAL);
+        return () => clearInterval(timer);
+    }, []);
 
     return (
         <div className="admin">
@@ -59,18 +77,35 @@ export default function AdminLayout() {
                         <span className="admin-nav__label">На сайт</span>
                     </Link>
 
+                    <a href="/django-admin/" target="_blank" rel="noopener noreferrer" className="admin-nav__link admin-nav__link--muted">
+                        <Icon name="django" />
+                        <span className="admin-nav__label">Django admin</span>
+                    </a>
+
                     <div className="admin__profile">
-                        <span className="admin__avatar">ММ</span>
+                        <span className="admin__avatar">{initials(name)}</span>
                         <span className="admin__profile-text">
-                            <span className="admin__profile-name">Максим Мерцалов</span>
+                            <span className="admin__profile-name">{name}</span>
                             <span className="admin__profile-role">Организатор</span>
                         </span>
                     </div>
+
+                    <button type="button" className="admin-nav__link admin-nav__link--muted admin-nav__button" onClick={logout}>
+                        <Icon name="logout" />
+                        <span className="admin-nav__label">Выйти</span>
+                    </button>
                 </div>
             </aside>
 
             <main className="admin__main">
-                <Outlet />
+                {status === 'ready' && <Outlet />}
+                {status === 'loading' && <div className="admin-empty"><span className="admin-empty__text">Загружаем данные</span></div>}
+                {status === 'error' && (
+                    <div className="admin-empty">
+                        <span className="admin-empty__title">Не получилось загрузить данные</span>
+                        <button type="button" className="admin-button admin-button--ghost" onClick={loadAdmin}>Попробовать ещё раз</button>
+                    </div>
+                )}
             </main>
 
             <div className="admin-toast-region" role="status" aria-live="polite">
@@ -85,4 +120,15 @@ export default function AdminLayout() {
             </div>
         </div>
     );
+}
+
+export default function AdminLayout() {
+    const { user, status } = useAuth();
+    const location = useLocation();
+
+    if (status === 'loading') return null;
+    if (status !== 'authenticated') return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
+    if (!user.is_superuser) return <NotFound />;
+
+    return <AdminPanel user={user} />;
 }

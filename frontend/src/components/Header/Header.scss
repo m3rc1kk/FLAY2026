@@ -276,3 +276,12 @@
 .header__logout {
   cursor: pointer;
 }
+
+.header__nav-link--admin {
+  color: var(--color-accent);
+  opacity: .85;
+
+  @include hover {
+    opacity: 1;
+  }
+}

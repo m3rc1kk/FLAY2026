@@ -1,4 +1,4 @@
-export const initials = (name) => name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+export const initials = (name) => name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 
 export function CandidatePhoto({ candidate, className = '' }) {
     return (
@@ -11,10 +11,11 @@ export function CandidatePhoto({ candidate, className = '' }) {
 }
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function readPhoto(file, onError) {
     if (!file) return null;
-    if (!file.type.startsWith('image/')) {
+    if (!PHOTO_TYPES.includes(file.type)) {
         onError('Нужна картинка: JPG, PNG или WebP');
         return null;
     }
@@ -22,13 +23,13 @@ export function readPhoto(file, onError) {
         onError('Фото больше 5 МБ, сожми его');
         return null;
     }
-    return URL.createObjectURL(file);
+    return file;
 }
 
 export function PhotoDrop({ photo, name = '', onChange, onError, className = '', emptyLabel = 'Фото', changeLabel = 'Сменить' }) {
     const handleFiles = (files) => {
-        const url = readPhoto(files?.[0], onError);
-        if (url) onChange(url);
+        const file = readPhoto(files?.[0], onError);
+        if (file) onChange(file);
     };
 
     return (
@@ -49,7 +50,7 @@ export function PhotoDrop({ photo, name = '', onChange, onError, className = '',
         >
             <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className="admin-photo-drop__input"
                 onChange={(event) => {
                     handleFiles(event.target.files);

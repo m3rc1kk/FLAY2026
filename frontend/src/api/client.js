@@ -76,14 +76,15 @@ const refreshTokens = () => {
 
 export async function api(path, { method = 'GET', body, retry = true } = {}) {
     const { access } = getTokens();
+    const isForm = body instanceof FormData;
     const headers = {};
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
     if (access) headers.Authorization = `Bearer ${access}`;
 
     const response = await fetch(`${API_URL}${path}`, {
         method,
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined || isForm ? body : JSON.stringify(body),
     });
 
     if (response.status === 401 && access && retry) {

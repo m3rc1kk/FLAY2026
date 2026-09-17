@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
     addCandidate,
@@ -10,7 +10,7 @@ import {
     removeCandidate,
     removeNomination,
     setCandidatePhoto,
-    TOTAL_USERS,
+    TOTAL_USERS_SELECTOR,
     updateNomination,
     useAdminStore,
     votesLabel,
@@ -35,11 +35,12 @@ function MainForm({ nomination }) {
     const isDirty = title !== nomination.title || description !== nomination.description;
     const isValid = title.trim().length > 0;
 
-    const save = (event) => {
+    const save = async (event) => {
         event.preventDefault();
         if (!isDirty || !isValid) return;
-        updateNomination(nomination.number, { title: title.trim().toUpperCase(), description: description.trim() });
-        notify('Изменения сохранены');
+        if (await updateNomination(nomination.id, { title: title.trim().toUpperCase(), description: description.trim() })) {
+            notify('Изменения сохранены');
+        }
     };
 
     const reset = () => {
@@ -79,30 +80,39 @@ function MainForm({ nomination }) {
 function Candidates({ nomination, results }) {
     const [name, setName] = useState('');
     const [photo, setPhoto] = useState(null);
+    const [isAdding, setIsAdding] = useState(false);
     const [confirmId, setConfirmId] = useState(null);
     const [dragIndex, setDragIndex] = useState(null);
     const [overIndex, setOverIndex] = useState(null);
 
     const votesById = Object.fromEntries(results.map((item) => [item.id, item.votes]));
 
-    const add = (event) => {
+    useEffect(() => () => {
+        if (photo) URL.revokeObjectURL(photo.url);
+    }, [photo]);
+
+    const choosePhoto = (file) => setPhoto(file ? { file, url: URL.createObjectURL(file) } : null);
+
+    const add = async (event) => {
         event.preventDefault();
         const value = name.trim();
-        if (!value) return;
-        addCandidate(nomination.number, value, photo);
+        if (!value || isAdding) return;
+        setIsAdding(true);
+        const result = await addCandidate(nomination.id, value, photo?.file);
+        setIsAdding(false);
+        if (!result) return;
         setName('');
-        setPhoto(null);
+        choosePhoto(null);
         notify(`Кандидат добавлен: ${value}`);
     };
 
-    const remove = (candidate) => {
-        removeCandidate(nomination.number, candidate.id);
+    const remove = async (candidate) => {
         setConfirmId(null);
-        notify(`Кандидат удалён: ${candidate.name}`);
+        if (await removeCandidate(candidate.id)) notify(`Кандидат удалён: ${candidate.name}`);
     };
 
     const drop = (index) => {
-        if (dragIndex !== null && dragIndex !== index) moveCandidate(nomination.number, dragIndex, index);
+        if (dragIndex !== null && dragIndex !== index) moveCandidate(nomination.id, dragIndex, index);
         setDragIndex(null);
         setOverIndex(null);
     };
@@ -156,9 +166,8 @@ function Candidates({ nomination, results }) {
                                     className="admin-candidates__photo"
                                     changeLabel=""
                                     emptyLabel=""
-                                    onChange={(url) => {
-                                        setCandidatePhoto(nomination.number, candidate.id, url);
-                                        notify(`Фото обновлено: ${candidate.name}`);
+                                    onChange={async (file) => {
+                                        if (await setCandidatePhoto(candidate.id, file)) notify(`Фото обновлено: ${candidate.name}`);
                                     }}
                                     onError={(text) => notify(text, 'error')}
                                 />
@@ -195,14 +204,14 @@ function Candidates({ nomination, results }) {
             <form className="admin-new-candidate" onSubmit={add}>
                 <span className="admin-new-candidate__photo-wrap">
                     <PhotoDrop
-                        photo={photo}
+                        photo={photo?.url}
                         className="admin-new-candidate__photo"
                         emptyLabel="Фото"
-                        onChange={setPhoto}
+                        onChange={choosePhoto}
                         onError={(text) => notify(text, 'error')}
                     />
                     {photo && (
-                        <button type="button" className="admin-new-candidate__clear" onClick={() => setPhoto(null)} aria-label="Убрать фото">
+                        <button type="button" className="admin-new-candidate__clear" onClick={() => choosePhoto(null)} aria-label="Убрать фото">
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden="true">
                                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                             </svg>
@@ -216,15 +225,16 @@ function Candidates({ nomination, results }) {
                     <span className="admin-new-candidate__hint">Фото можно перетащить на рамку слева. JPG, PNG или WebP до 5 МБ.</span>
                 </span>
 
-                <button type="submit" className="admin-button admin-button--outline admin-new-candidate__submit" disabled={!name.trim()}>Добавить</button>
+                <button type="submit" className="admin-button admin-button--outline admin-new-candidate__submit" disabled={!name.trim() || isAdding}>{isAdding ? 'Добавляем' : 'Добавить'}</button>
             </form>
         </section>
     );
 }
 
 function Results({ nomination, results }) {
+    const totalUsers = useAdminStore(TOTAL_USERS_SELECTOR);
     const total = nomination.votes.length;
-    const turnout = Math.round((total / TOTAL_USERS) * 100);
+    const turnout = totalUsers ? Math.round((total / totalUsers) * 100) : 0;
     const leader = results[0];
     const isTie = results[1] && leader.votes === results[1].votes && leader.votes > 0;
 
@@ -312,7 +322,7 @@ function Votes({ nomination }) {
                                 <span className="admin-votes__avatar">{initials(voter?.name ?? '')}</span>
                                 <span className="admin-votes__who">
                                     <Link to={`/admin/users/${vote.userId}`} className="admin-votes__name">{voter?.name}</Link>
-                                    <span className="admin-votes__username">@{voter?.username}</span>
+                                    <span className="admin-votes__username">{voter?.handle}</span>
                                 </span>
                                 <span className="admin-votes__target">{candidatesById[vote.candidateId]?.name}</span>
                                 <time className="admin-votes__time">{formatAgo(vote.at)}</time>
@@ -332,22 +342,24 @@ function Votes({ nomination }) {
 }
 
 export default function NominationEdit() {
-    const { number } = useParams();
+    const { id } = useParams();
     const navigate = useNavigate();
     const nominations = useAdminStore((state) => state.nominations);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-    const index = nominations.findIndex((item) => item.number === Number(number));
+    const index = nominations.findIndex((item) => item.id === Number(id));
     const nomination = nominations[index];
 
     if (!nomination) return <Navigate to="/admin/nominations" replace />;
 
     const results = getResults(nomination);
 
-    const deleteNomination = () => {
-        removeNomination(nomination.number);
-        notify(`Номинация «${nomination.title}» удалена`);
-        navigate('/admin/nominations');
+    const deleteNomination = async () => {
+        const { title } = nomination;
+        setIsConfirmingDelete(false);
+        if (!(await removeNomination(nomination.id))) return;
+        notify(`Номинация «${title}» удалена`);
+        navigate('/admin/nominations', { replace: true });
     };
 
     return (
@@ -366,7 +378,7 @@ export default function NominationEdit() {
                 </div>
 
                 <div className="admin-nomination__header-side">
-                    <a href={`/nominations/${nomination.number}`} target="_blank" rel="noopener noreferrer" className="admin-button admin-button--ghost">
+                    <a href={`/nominations/${nomination.id}`} target="_blank" rel="noopener noreferrer" className="admin-button admin-button--ghost">
                         На сайте
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
                             <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -377,13 +389,13 @@ export default function NominationEdit() {
 
             <div className="admin-nomination__grid">
                 <div className="admin-nomination__column">
-                    <MainForm key={`${nomination.number}-${nomination.title}-${nomination.description}`} nomination={nomination} />
+                    <MainForm key={`${nomination.id}-${nomination.title}-${nomination.description}`} nomination={nomination} />
                     <Candidates nomination={nomination} results={results} />
                 </div>
 
                 <div className="admin-nomination__column">
                     <Results nomination={nomination} results={results} />
-                    <Votes key={nomination.number} nomination={nomination} />
+                    <Votes key={nomination.id} nomination={nomination} />
                 </div>
             </div>
 

@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.auth.serializers import (
-    LogoutSerializer, TelegramAuthSerializer, TelegramProfileSerializer, UserSerializer,
+    LogoutSerializer, TelegramAuthSerializer, UserSerializer,
 )
 
 
@@ -36,10 +36,6 @@ class TelegramAuthView(AuthThrottleMixin, generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return token_response(serializer.save())
-
-
-class DevTelegramAuthView(TelegramAuthView):
-    serializer_class = TelegramProfileSerializer
 
 
 class RefreshView(AuthThrottleMixin, TokenRefreshView):

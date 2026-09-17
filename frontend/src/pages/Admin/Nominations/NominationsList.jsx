@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { addNomination, getResults, moveNomination, notify, TOTAL_USERS, useAdminStore } from '../store.js';
+import { addNomination, getResults, moveNomination, notify, TOTAL_USERS_SELECTOR, useAdminStore } from '../store.js';
 import { CandidatePhoto } from '../ui.jsx';
 
 export default function NominationsList() {
     const navigate = useNavigate();
     const nominations = useAdminStore((state) => state.nominations);
+    const totalUsers = useAdminStore(TOTAL_USERS_SELECTOR);
     const [query, setQuery] = useState('');
     const [dragIndex, setDragIndex] = useState(null);
     const [overIndex, setOverIndex] = useState(null);
@@ -16,16 +17,16 @@ export default function NominationsList() {
         .map((nomination, index) => ({ nomination, index }))
         .filter(({ nomination }) => nomination.title.toLowerCase().includes(query.trim().toLowerCase()));
 
-    const handleAdd = () => {
-        const number = addNomination();
+    const handleAdd = async () => {
+        const created = await addNomination();
+        if (!created) return;
         notify('Номинация создана');
-        navigate(`/admin/nominations/${number}`);
+        navigate(`/admin/nominations/${created.id}`);
     };
 
     const handleDrop = (index) => {
         if (dragIndex !== null && dragIndex !== index) {
-            moveNomination(dragIndex, index);
-            notify('Порядок на сайте обновлён');
+            moveNomination(dragIndex, index).then((result) => result && notify('Порядок на сайте обновлён'));
         }
         setDragIndex(null);
         setOverIndex(null);
@@ -88,12 +89,12 @@ export default function NominationsList() {
                         const results = getResults(nomination);
                         const leader = results[0];
                         const second = results[1];
-                        const turnout = Math.round((nomination.votes.length / TOTAL_USERS) * 100);
+                        const turnout = totalUsers ? Math.round((nomination.votes.length / totalUsers) * 100) : 0;
                         const isTie = leader && second && leader.votes === second.votes && leader.votes > 0;
 
                         return (
                             <li
-                                key={nomination.number}
+                                key={nomination.id}
                                 className={`admin-table__row${dragIndex === index ? ' is-dragging' : ''}${overIndex === index && dragIndex !== index ? ' is-over' : ''}`}
                                 style={{ '--i': rowIndex }}
                                 draggable={!isFiltered}
@@ -121,7 +122,7 @@ export default function NominationsList() {
                                     </span>
                                 </span>
 
-                                <Link to={`/admin/nominations/${nomination.number}`} className="admin-table__title">
+                                <Link to={`/admin/nominations/${nomination.id}`} className="admin-table__title">
                                     {nomination.title}
                                     <svg className="admin-table__arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
                                         <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

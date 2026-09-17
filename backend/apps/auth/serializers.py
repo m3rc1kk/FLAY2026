@@ -1,10 +1,8 @@
-import time
-
 from django.conf import settings
 from rest_framework import serializers
 
 from apps.auth.models import User
-from apps.auth.telegram import verify_telegram_login
+from apps.auth.telegram import is_fresh, remember_hash, verify_telegram_login
 from apps.voting.models import Event
 
 
@@ -21,12 +19,25 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class TelegramProfileSerializer(serializers.Serializer):
+class TelegramAuthSerializer(serializers.Serializer):
     id = serializers.IntegerField(min_value=1)
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150, allow_blank=True, default='')
     username = serializers.CharField(max_length=32, allow_blank=True, default='')
     photo_url = serializers.URLField(max_length=500, allow_blank=True, default='')
+    auth_date = serializers.IntegerField()
+    hash = serializers.CharField(max_length=64)
+
+    def validate(self, attrs):
+        if not settings.TELEGRAM_BOT_TOKEN:
+            raise serializers.ValidationError('Telegram auth is not configured.')
+        if not verify_telegram_login(self.initial_data, settings.TELEGRAM_BOT_TOKEN):
+            raise serializers.ValidationError('Invalid Telegram authorization.')
+        if not is_fresh(attrs['auth_date'], settings.TELEGRAM_AUTH_MAX_AGE):
+            raise serializers.ValidationError('Telegram authorization has expired.')
+        if not remember_hash(attrs['hash'], settings.TELEGRAM_AUTH_MAX_AGE):
+            raise serializers.ValidationError('This Telegram authorization has already been used.')
+        return attrs
 
     def save(self):
         data = self.validated_data
@@ -46,20 +57,6 @@ class TelegramProfileSerializer(serializers.Serializer):
         if created:
             Event.objects.create(user=user, kind=Event.Kind.FIRST_LOGIN)
         return user
-
-
-class TelegramAuthSerializer(TelegramProfileSerializer):
-    auth_date = serializers.IntegerField()
-    hash = serializers.CharField(max_length=64)
-
-    def validate(self, attrs):
-        if not settings.TELEGRAM_BOT_TOKEN:
-            raise serializers.ValidationError('Telegram auth is not configured.')
-        if not verify_telegram_login(self.initial_data, settings.TELEGRAM_BOT_TOKEN):
-            raise serializers.ValidationError('Invalid Telegram authorization.')
-        if time.time() - attrs['auth_date'] > settings.TELEGRAM_AUTH_MAX_AGE:
-            raise serializers.ValidationError('Telegram authorization has expired.')
-        return attrs
 
 
 class LogoutSerializer(serializers.Serializer):

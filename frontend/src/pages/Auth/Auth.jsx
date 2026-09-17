@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import LogoMark from "../../components/LogoMark/LogoMark.jsx";
 import ButtonLink from "../../components/Button/Button.jsx";
 import { loginWithTelegram, useAuth } from "../../data/auth.js";
@@ -7,53 +7,61 @@ import telegramIcon from '../../assets/images/Auth/telegram.svg'
 import backgroundImage from '../../assets/images/Auth/back.png'
 
 const TELEGRAM_BOT_ID = import.meta.env.VITE_TELEGRAM_BOT_ID;
-const TELEGRAM_SCRIPT_ID = 'telegram-login-script';
+const TELEGRAM_OAUTH_URL = 'https://oauth.telegram.org/auth';
+const AUTH_RESULT = /[#?&]tgAuthResult=([A-Za-z0-9\-_=]+)/;
 
-const loadTelegramScript = () => {
-    if (document.getElementById(TELEGRAM_SCRIPT_ID)) return;
-    const script = document.createElement('script');
-    script.id = TELEGRAM_SCRIPT_ID;
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.async = true;
-    document.body.appendChild(script);
+const readAuthResult = () => {
+    const match = window.location.hash.match(AUTH_RESULT);
+    if (!match) return null;
+
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    try {
+        const base64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')));
+    } catch {
+        return null;
+    }
 };
+
+let pendingAuthData = readAuthResult();
 
 export default function Auth() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const redirectTo = location.state?.from ?? new URLSearchParams(location.search).get('next') ?? '/';
     const { status } = useAuth();
-    const [isPending, setIsPending] = useState(false);
+    const [isPending, setIsPending] = useState(Boolean(pendingAuthData));
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (TELEGRAM_BOT_ID) loadTelegramScript();
-    }, []);
+        const data = pendingAuthData;
+        if (!data) return;
+        pendingAuthData = null;
+
+        loginWithTelegram(data)
+            .then(() => navigate(redirectTo, { replace: true }))
+            .catch(() => {
+                setError('Не получилось войти. Попробуй ещё раз');
+                setIsPending(false);
+            });
+    }, [navigate, redirectTo]);
 
     const login = () => {
         if (!TELEGRAM_BOT_ID) {
-            if (import.meta.env.DEV) navigate('/auth/dev');
+            setError('Вход через Telegram не настроен');
             return;
         }
 
-        if (!window.Telegram?.Login) {
-            setError('Telegram ещё загружается, попробуй через секунду');
-            return;
-        }
-
-        setError(null);
-        window.Telegram.Login.auth({ bot_id: TELEGRAM_BOT_ID }, async (data) => {
-            if (!data) return;
-            setIsPending(true);
-            try {
-                await loginWithTelegram(data);
-                navigate('/', { replace: true });
-            } catch {
-                setError('Не получилось войти. Попробуй ещё раз');
-                setIsPending(false);
-            }
+        const next = location.state?.from;
+        const params = new URLSearchParams({
+            bot_id: TELEGRAM_BOT_ID,
+            origin: window.location.origin,
+            return_to: window.location.origin + location.pathname + (next ? `?next=${encodeURIComponent(next)}` : ''),
         });
+        window.location.href = `${TELEGRAM_OAUTH_URL}?${params}`;
     };
 
-    if (status === 'authenticated' && !isPending) return <Navigate to="/" replace />;
+    if (status === 'authenticated' && !isPending) return <Navigate to={redirectTo} replace />;
 
     return (
         <>

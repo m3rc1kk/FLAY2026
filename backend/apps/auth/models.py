@@ -48,6 +48,18 @@ class User(AbstractUser):
         self.last_seen = now
 
 
+class TelegramAuthNonce(models.Model):
+    hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Telegram auth nonce'
+        verbose_name_plural = 'Telegram auth nonces'
+
+    def __str__(self):
+        return self.hash
+
+
 class AllowedTelegramId(models.Model):
     telegram_id = models.BigIntegerField(unique=True)
     name = models.CharField(max_length=150, blank=True)

@@ -30,6 +30,15 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda value: [host.strip() for host in value.split(',') if host.strip()])
 
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=lambda value: [origin.strip() for origin in value.split(',') if origin.strip()])
+
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
 
 # Application definition
 
@@ -53,6 +62,7 @@ LOCAL_APPS = [
     'apps.auth',
     'apps.nominations',
     'apps.voting',
+    'apps.adminpanel',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -130,7 +140,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = config('TIME_ZONE', default='Europe/Moscow')
 
 USE_I18N = True
 
@@ -178,11 +188,13 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'auth': '20/min',
+        'votes': '60/min',
     },
+    'NUM_PROXIES': config('NUM_PROXIES', default=0, cast=int),
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -197,5 +209,4 @@ SIMPLE_JWT = {
 }
 
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
-TELEGRAM_AUTH_MAX_AGE = config('TELEGRAM_AUTH_MAX_AGE', default=86400, cast=int)
-TELEGRAM_DEV_AUTH = DEBUG and config('TELEGRAM_DEV_AUTH', default=False, cast=bool)
+TELEGRAM_AUTH_MAX_AGE = config('TELEGRAM_AUTH_MAX_AGE', default=300, cast=int)

@@ -55,6 +55,11 @@ export default function Header() {
                                 <ButtonLink href={link.href} className={'header__nav-link button-text'}>{link.label}</ButtonLink>
                             </li>
                         ))}
+                        {user?.is_superuser && (
+                            <li className="header__nav-item">
+                                <ButtonLink to="/admin" className={'header__nav-link header__nav-link--admin button-text'}>Админка</ButtonLink>
+                            </li>
+                        )}
                     </ul>
                 </nav>
 
@@ -94,6 +99,9 @@ export default function Header() {
                 </nav>
 
                 <div className="mobile-menu__footer">
+                    {user?.is_superuser && (
+                        <ButtonLink to="/admin" className="button-light mobile-menu__login">Админка</ButtonLink>
+                    )}
                     {user ? (
                         <ButtonLink type="button" className="button__link button-light mobile-menu__login header__logout" onClick={() => { closeMenu(); logout(); }}>Выйти</ButtonLink>
                     ) : (

@@ -1,100 +1,18 @@
 import { useSyncExternalStore } from 'react';
-import { nominations as siteNominations } from './siteNominations.js';
-import { onlineUsers, users, voting } from './mocks.js';
-import nomineeExample from '../../assets/images/Nominee/nominee-example.png';
+import { api } from '../../api/client.js';
 
 const MINUTE = 60 * 1000;
 
-const FIRST_NAMES = ['Алексей', 'Анна', 'Артём', 'Вероника', 'Глеб', 'Екатерина', 'Кирилл', 'Мария', 'Михаил', 'Полина', 'Роман', 'София', 'Тимофей', 'Ульяна', 'Фёдор', 'Юлия', 'Егор'];
-const LAST_NAMES = ['Смирнов', 'Кузнецова', 'Попов', 'Соколова', 'Лебедев', 'Козлова', 'Новиков', 'Морозова', 'Волков', 'Павлова', 'Семёнов', 'Голубева', 'Виноградов', 'Богданова', 'Воробьёв', 'Фёдорова', 'Михайлов', 'Белова'];
-
-export const voters = [
-    ...users,
-    ...Array.from({ length: 35 }, (_, index) => {
-        const first = FIRST_NAMES[index % FIRST_NAMES.length];
-        const last = LAST_NAMES[(index * 7) % LAST_NAMES.length];
-        const isFemale = /[ая]$/.test(first);
-        const lastName = isFemale && !/а$/.test(last) ? `${last}а` : !isFemale && /а$/.test(last) ? last.slice(0, -1) : last;
-        return { id: 100 + index, name: `${first} ${lastName}`, username: `user${100 + index}` };
-    }),
-];
-
-export const plural = (value, one, few, many) => {
-    const mod10 = value % 10;
-    const mod100 = value % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-    return many;
-};
-
-export const votesLabel = (value) => `${value} ${plural(value, 'голос', 'голоса', 'голосов')}`;
-
-export const titleCase = (value) => value.toLowerCase().replace(/(^|\s|-)\S/g, (letter) => letter.toUpperCase());
-
-const TURNOUT = [38, 35, 31, 29, 33, 22, 18, 26, 30];
-const NON_VOTERS = [10, 130, 131, 132, 133, 134];
-const WEIGHTS = [9, 6, 5, 4, 3, 2, 2];
-
-const makeCandidates = (nomination, index) => {
-    if (nomination.nominees.length) {
-        return nomination.nominees.map((nominee) => ({ id: nominee.number, name: titleCase(nominee.name), photo: nominee.image ?? nomineeExample }));
-    }
-
-    const size = 4 + (index % 3);
-    return Array.from({ length: size }, (_, position) => {
-        const user = users[(index * 3 + position * 5) % users.length];
-        return { id: position + 1, name: user.name, photo: null };
-    });
-};
-
-const makeVotes = (candidates, total, seed) => {
-    const weights = candidates.map((_, position) => WEIGHTS[(position + seed) % WEIGHTS.length]);
-    const sum = weights.reduce((acc, weight) => acc + weight, 0);
-    const counts = weights.map((weight) => Math.floor((weight / sum) * total));
-    let rest = total - counts.reduce((acc, count) => acc + count, 0);
-    for (let position = 0; rest > 0; position = (position + 1) % counts.length, rest -= 1) {
-        counts[position] += 1;
-    }
-
-    const shuffled = voters.filter((voter) => !NON_VOTERS.includes(voter.id)).sort((a, b) => ((a.id * (seed + 3)) % 47) - ((b.id * (seed + 3)) % 47));
-    const votes = [];
-    let cursor = 0;
-    counts.forEach((count, position) => {
-        for (let step = 0; step < count; step += 1) {
-            votes.push({
-                id: `${seed}-${cursor}`,
-                userId: shuffled[cursor].id,
-                candidateId: candidates[position].id,
-                at: Date.now() - ((cursor * 37 + seed * 11) % 4000) * MINUTE,
-            });
-            cursor += 1;
-        }
-    });
-
-    return votes.sort((a, b) => b.at - a.at);
-};
+export const DAY = 24 * 60 * MINUTE;
 
 let state = {
-    nominations: siteNominations.map((nomination, index) => {
-        const candidates = makeCandidates(nomination, index);
-        return {
-            number: nomination.number,
-            title: nomination.title,
-            description: '',
-            candidates,
-            votes: makeVotes(candidates, TURNOUT[index] ?? 0, index),
-        };
-    }),
-    users: voters.map((voter, index) => ({
-        ...voter,
-        joinedAt: Date.now() - ((index * 131) % (3 * 24 * 60)) * MINUTE - 20 * MINUTE,
-        lastSeenAt: onlineUsers.includes(voter.id) ? Date.now() : Date.now() - (((index * 53) % 1800) + 12) * MINUTE,
-        status: voter.id === 10 ? 'banned' : 'active',
-        banReason: voter.id === 10 ? 'Второй аккаунт' : '',
-        bannedAt: voter.id === 10 ? Date.now() - 42 * MINUTE : null,
-        revokes: [11, 2, 104].includes(voter.id) ? 3 + (index % 3) : index % 7 === 0 ? 1 : 0,
-    })),
-    voting,
+    status: 'loading',
+    rawNominations: [],
+    nominations: [],
+    users: [],
+    voting: { startsAt: null, endsAt: null },
+    events: [],
+    allowed: [],
     toast: null,
 };
 
@@ -112,9 +30,139 @@ const subscribe = (listener) => {
 
 export const useAdminStore = (selector) => useSyncExternalStore(subscribe, () => selector(state));
 
-export const TOTAL_USERS = voters.length;
+export const plural = (value, one, few, many) => {
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+    return many;
+};
 
-export const findVoter = (id) => voters.find((voter) => voter.id === id);
+export const votesLabel = (value) => `${value} ${plural(value, 'голос', 'голоса', 'голосов')}`;
+
+const toTime = (value) => (value ? new Date(value).getTime() : null);
+
+const toUser = (user) => {
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    return {
+        id: user.id,
+        telegramId: user.telegram_id,
+        name: name || `ID ${user.telegram_id}`,
+        username: user.telegram_username,
+        handle: user.telegram_username ? `@${user.telegram_username}` : `ID ${user.telegram_id}`,
+        photo: user.photo_url || null,
+        joinedAt: toTime(user.date_joined),
+        lastSeenAt: toTime(user.last_seen) ?? toTime(user.date_joined),
+        status: user.is_banned ? 'banned' : 'active',
+        banReason: user.ban_reason,
+        bannedAt: toTime(user.banned_at),
+        revokes: user.revokes,
+        isAllowed: user.is_allowed,
+        isSuperuser: user.is_superuser,
+    };
+};
+
+const toVoting = (voting) => ({ startsAt: toTime(voting.starts_at), endsAt: toTime(voting.ends_at) });
+
+const toEvent = (event) => ({
+    id: event.id,
+    type: { first_login: 'join', unvote: 'revoke' }[event.kind] ?? event.kind,
+    userId: event.user,
+    userName: event.user_name,
+    nomination: event.nomination_title,
+    nominee: event.candidate_name,
+    reason: event.details,
+    at: toTime(event.created_at),
+});
+
+const toAllowed = (item) => ({
+    id: item.id,
+    telegramId: item.telegram_id,
+    name: item.name,
+    createdAt: toTime(item.created_at),
+    user: item.user,
+});
+
+const buildNominations = (rawNominations, users) => {
+    const banned = new Set(users.filter((user) => user.status === 'banned').map((user) => user.id));
+    return rawNominations.map((nomination) => {
+        const allVotes = nomination.votes.map((vote) => ({
+            id: vote.id,
+            userId: vote.user,
+            candidateId: vote.candidate,
+            at: toTime(vote.created_at),
+        }));
+        return {
+            id: nomination.id,
+            title: nomination.title,
+            description: nomination.description,
+            candidates: nomination.candidates,
+            allVotes,
+            votes: allVotes.filter((vote) => !banned.has(vote.userId)),
+        };
+    });
+};
+
+const patchState = (patch) => setState((current) => {
+    const next = { ...current, ...patch };
+    return { ...next, nominations: buildNominations(next.rawNominations, next.users) };
+});
+
+export const notify = (text, type = 'success') => {
+    const id = Date.now();
+    setState((current) => ({ ...current, toast: { id, text, type } }));
+    setTimeout(() => {
+        setState((current) => (current.toast?.id === id ? { ...current, toast: null } : current));
+    }, 2600);
+};
+
+const fetchNominations = () => api('/admin/nominations/').then((rawNominations) => patchState({ rawNominations }));
+const fetchUsers = () => api('/admin/users/').then((users) => patchState({ users: users.map(toUser) }));
+const fetchEvents = () => api('/admin/events/').then((events) => patchState({ events: events.map(toEvent) }));
+const fetchAllowed = () => api('/admin/allowed-ids/').then((allowed) => patchState({ allowed: allowed.map(toAllowed) }));
+const fetchVoting = () => api('/admin/voting/').then((voting) => patchState({ voting: toVoting(voting) }));
+
+export const loadAdmin = async () => {
+    try {
+        await Promise.all([fetchNominations(), fetchUsers(), fetchEvents(), fetchAllowed(), fetchVoting()]);
+        patchState({ status: 'ready' });
+    } catch {
+        patchState({ status: 'error' });
+    }
+};
+
+export const refreshAdmin = () => Promise.all([fetchNominations(), fetchUsers(), fetchEvents()]).catch(() => null);
+
+const errorText = (error, fallback) => {
+    const data = error?.data;
+    if (error?.status === 413) return 'Файл слишком большой';
+    if (data?.photo) return 'Не получилось загрузить фото: нужна картинка JPG, PNG или WebP до 5 МБ';
+    if (data?.telegram_id) return 'Этот Telegram ID уже в списке';
+    return fallback;
+};
+
+const mutate = async (request, refresh, fallback = 'Не получилось сохранить, попробуй ещё раз') => {
+    try {
+        const result = await request();
+        await Promise.all(refresh.map((load) => load()));
+        return result ?? true;
+    } catch (error) {
+        notify(errorText(error, fallback), 'error');
+        await Promise.all(refresh.map((load) => load().catch(() => null)));
+        return null;
+    }
+};
+
+const reorder = (list, fromIndex, toIndex) => {
+    const next = [...list];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+};
+
+export const TOTAL_USERS_SELECTOR = (current) => current.users.length;
+
+export const findVoter = (id) => state.users.find((user) => user.id === id);
 
 export const getResults = (nomination) => {
     const total = nomination.votes.length;
@@ -126,72 +174,83 @@ export const getResults = (nomination) => {
         .sort((a, b) => b.votes - a.votes);
 };
 
-export const notify = (text, type = 'success') => {
-    const id = Date.now();
-    setState((current) => ({ ...current, toast: { id, text, type } }));
-    setTimeout(() => {
-        setState((current) => (current.toast?.id === id ? { ...current, toast: null } : current));
-    }, 2600);
+export const addNomination = () => mutate(
+    () => api('/admin/nominations/', { method: 'POST', body: { title: 'НОВАЯ НОМИНАЦИЯ' } }),
+    [fetchNominations],
+);
+
+export const updateNomination = (id, patch) => mutate(
+    () => api(`/admin/nominations/${id}/`, { method: 'PATCH', body: patch }),
+    [fetchNominations],
+);
+
+export const removeNomination = (id) => mutate(
+    () => api(`/admin/nominations/${id}/`, { method: 'DELETE' }),
+    [fetchNominations],
+);
+
+export const moveNomination = (fromIndex, toIndex) => {
+    const rawNominations = reorder(state.rawNominations, fromIndex, toIndex);
+    patchState({ rawNominations });
+    return mutate(
+        () => api('/admin/nominations/reorder/', { method: 'POST', body: { ids: rawNominations.map((nomination) => nomination.id) } }),
+        [],
+        'Не получилось сохранить порядок',
+    ).then((result) => {
+        if (!result) fetchNominations();
+        return result;
+    });
 };
 
-const updateNominations = (updater) => setState((current) => ({ ...current, nominations: updater(current.nominations) }));
-
-export const updateNomination = (number, patch) => updateNominations((list) => list.map((nomination) => (
-    nomination.number === number ? { ...nomination, ...patch } : nomination
-)));
-
-export const moveNomination = (fromIndex, toIndex) => updateNominations((list) => {
-    const next = [...list];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    return next;
-});
-
-export const addNomination = () => {
-    const number = Math.max(0, ...state.nominations.map((nomination) => nomination.number)) + 1;
-    updateNominations((list) => [...list, { number, title: 'НОВАЯ НОМИНАЦИЯ', description: '', candidates: [], votes: [] }]);
-    return number;
+const candidateForm = (fields) => {
+    const form = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) form.append(key, value);
+    });
+    return form;
 };
 
-export const removeNomination = (number) => updateNominations((list) => list.filter((nomination) => nomination.number !== number));
+export const addCandidate = (nominationId, name, photo = null) => mutate(
+    () => api(`/admin/nominations/${nominationId}/candidates/`, { method: 'POST', body: candidateForm({ name, photo }) }),
+    [fetchNominations],
+);
 
-export const addCandidate = (number, name, photo = null) => updateNominations((list) => list.map((nomination) => {
-    if (nomination.number !== number) return nomination;
-    const id = Math.max(0, ...nomination.candidates.map((candidate) => candidate.id)) + 1;
-    return { ...nomination, candidates: [...nomination.candidates, { id, name, photo }] };
-}));
+export const setCandidatePhoto = (candidateId, photo) => mutate(
+    () => api(`/admin/candidates/${candidateId}/`, { method: 'PATCH', body: candidateForm({ photo }) }),
+    [fetchNominations],
+);
 
-export const setCandidatePhoto = (number, candidateId, photo) => updateNominations((list) => list.map((nomination) => (
-    nomination.number === number
-        ? { ...nomination, candidates: nomination.candidates.map((candidate) => (candidate.id === candidateId ? { ...candidate, photo } : candidate)) }
-        : nomination
-)));
+export const removeCandidate = (candidateId) => mutate(
+    () => api(`/admin/candidates/${candidateId}/`, { method: 'DELETE' }),
+    [fetchNominations],
+);
 
-export const removeCandidate = (number, candidateId) => updateNominations((list) => list.map((nomination) => (
-    nomination.number === number
-        ? {
-            ...nomination,
-            candidates: nomination.candidates.filter((candidate) => candidate.id !== candidateId),
-            votes: nomination.votes.filter((vote) => vote.candidateId !== candidateId),
-        }
-        : nomination
-)));
-
-export const moveCandidate = (number, fromIndex, toIndex) => updateNominations((list) => list.map((nomination) => {
-    if (nomination.number !== number) return nomination;
-    const candidates = [...nomination.candidates];
-    const [moved] = candidates.splice(fromIndex, 1);
-    candidates.splice(toIndex, 0, moved);
-    return { ...nomination, candidates };
-}));
+export const moveCandidate = (nominationId, fromIndex, toIndex) => {
+    let ids = [];
+    const rawNominations = state.rawNominations.map((nomination) => {
+        if (nomination.id !== nominationId) return nomination;
+        const candidates = reorder(nomination.candidates, fromIndex, toIndex);
+        ids = candidates.map((candidate) => candidate.id);
+        return { ...nomination, candidates };
+    });
+    patchState({ rawNominations });
+    return mutate(
+        () => api(`/admin/nominations/${nominationId}/candidates/reorder/`, { method: 'POST', body: { ids } }),
+        [],
+        'Не получилось сохранить порядок',
+    ).then((result) => {
+        if (!result) fetchNominations();
+        return result;
+    });
+};
 
 export const BAN_REASONS = ['Второй аккаунт', 'Накрутка голосов', 'Не из фанклуба'];
 
-export const isOnline = (user) => Date.now() - user.lastSeenAt < 5 * MINUTE;
+export const isOnline = (user) => Boolean(user.lastSeenAt) && Date.now() - user.lastSeenAt < 5 * MINUTE;
 
 export const getUserVotes = (nominations, userId) => nominations
     .map((nomination) => {
-        const vote = nomination.votes.find((item) => item.userId === userId);
+        const vote = nomination.allVotes.find((item) => item.userId === userId);
         return {
             nomination,
             vote,
@@ -199,39 +258,45 @@ export const getUserVotes = (nominations, userId) => nominations
         };
     });
 
-const updateUsers = (updater) => setState((current) => ({ ...current, users: updater(current.users) }));
+export const fetchUserEvents = (userId) => api(`/admin/users/${userId}/events/`).then((events) => events.map(toEvent));
 
-export const banUser = (userId, reason, withVotes) => {
-    updateUsers((list) => list.map((user) => (
-        user.id === userId ? { ...user, status: 'banned', banReason: reason, bannedAt: Date.now() } : user
-    )));
-    if (withVotes) {
-        updateNominations((list) => list.map((nomination) => ({ ...nomination, votes: nomination.votes.filter((vote) => vote.userId !== userId) })));
-    }
-};
+export const banUser = (userId, reason, withVotes) => mutate(
+    () => api(`/admin/users/${userId}/ban/`, { method: 'POST', body: { reason, with_votes: withVotes } }),
+    [fetchUsers, fetchNominations, fetchEvents],
+);
 
-export const unbanUser = (userId) => updateUsers((list) => list.map((user) => (
-    user.id === userId ? { ...user, status: 'active', banReason: '', bannedAt: null } : user
-)));
+export const unbanUser = (userId) => mutate(
+    () => api(`/admin/users/${userId}/unban/`, { method: 'POST' }),
+    [fetchUsers, fetchNominations, fetchEvents],
+);
 
-export const removeUserVote = (userId, nominationNumber) => updateNominations((list) => list.map((nomination) => (
-    nomination.number === nominationNumber
-        ? { ...nomination, votes: nomination.votes.filter((vote) => vote.userId !== userId) }
-        : nomination
-)));
+export const removeUserVote = (userId, nominationId) => mutate(
+    () => api(`/admin/users/${userId}/votes/${nominationId}/`, { method: 'DELETE' }),
+    [fetchNominations],
+);
 
-export const resetUserVotes = (userId) => updateNominations((list) => list.map((nomination) => ({
-    ...nomination,
-    votes: nomination.votes.filter((vote) => vote.userId !== userId),
-})));
+export const resetUserVotes = (userId) => mutate(
+    () => api(`/admin/users/${userId}/votes/`, { method: 'DELETE' }),
+    [fetchNominations],
+);
 
-export const DAY = 24 * 60 * MINUTE;
+export const addAllowed = (telegramId, name) => mutate(
+    () => api('/admin/allowed-ids/', { method: 'POST', body: { telegram_id: telegramId, name } }),
+    [fetchAllowed, fetchUsers],
+);
+
+export const removeAllowed = (id) => mutate(
+    () => api(`/admin/allowed-ids/${id}/`, { method: 'DELETE' }),
+    [fetchAllowed, fetchUsers],
+);
 
 export const getVotingStatus = ({ startsAt, endsAt }, now = Date.now()) => {
-    if (now < startsAt) return 'upcoming';
+    if (!startsAt || !endsAt || now < startsAt) return 'upcoming';
     if (now >= endsAt) return 'finished';
     return 'active';
 };
+
+export const isVotingScheduled = ({ startsAt, endsAt }) => Boolean(startsAt && endsAt);
 
 export const startOfDay = (timestamp) => {
     const date = new Date(timestamp);
@@ -251,4 +316,13 @@ export const formatDuration = (ms) => {
     return `${minutes} мин`;
 };
 
-export const updateVoting = (patch) => setState((current) => ({ ...current, voting: { ...current.voting, ...patch } }));
+export const updateVoting = (patch) => {
+    const body = {};
+    if ('startsAt' in patch) body.starts_at = new Date(patch.startsAt).toISOString();
+    if ('endsAt' in patch) body.ends_at = new Date(patch.endsAt).toISOString();
+    return mutate(
+        () => api('/admin/voting/', { method: 'PATCH', body }),
+        [fetchVoting],
+        'Не получилось сохранить сроки',
+    );
+};

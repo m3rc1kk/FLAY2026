@@ -2,6 +2,7 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from apps.voting.models import Event, Vote, VotingSettings
 from apps.voting.serializers import VoteSerializer, VotingSettingsSerializer
@@ -36,7 +37,12 @@ class VotingSettingsView(generics.RetrieveAPIView):
         return VotingSettings.load()
 
 
-class VoteListView(generics.ListCreateAPIView):
+class VoteThrottleMixin:
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'votes'
+
+
+class VoteListView(VoteThrottleMixin, generics.ListCreateAPIView):
     serializer_class = VoteSerializer
     pagination_class = None
 
@@ -60,7 +66,7 @@ class VoteListView(generics.ListCreateAPIView):
         return Response(self.get_serializer(vote).data, status=status.HTTP_201_CREATED)
 
 
-class VoteDetailView(generics.DestroyAPIView):
+class VoteDetailView(VoteThrottleMixin, generics.DestroyAPIView):
     def get_object(self):
         return get_object_or_404(Vote, user=self.request.user, nomination_id=self.kwargs['nomination_id'])
 
