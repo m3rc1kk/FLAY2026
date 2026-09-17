@@ -9,34 +9,60 @@ import backgroundImage from '../../assets/images/Auth/back.png'
 const TELEGRAM_BOT_ID = import.meta.env.VITE_TELEGRAM_BOT_ID;
 const TELEGRAM_OAUTH_URL = 'https://oauth.telegram.org/auth';
 const AUTH_RESULT = /[#?&]tgAuthResult=([A-Za-z0-9\-_=]+)/;
+const STATE_KEY = 'flay-auth-state';
+
+const session = {
+    take(key) {
+        try {
+            const value = sessionStorage.getItem(key);
+            sessionStorage.removeItem(key);
+            return value;
+        } catch {
+            return null;
+        }
+    },
+    put(key, value) {
+        try {
+            sessionStorage.setItem(key, value);
+        } catch {
+            return;
+        }
+    },
+};
 
 const readAuthResult = () => {
     const match = window.location.hash.match(AUTH_RESULT);
     if (!match) return null;
 
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    const search = new URLSearchParams(window.location.search);
+    const expected = session.take(STATE_KEY);
+    const next = search.get('next');
+    window.history.replaceState(null, '', window.location.pathname + (next ? `?next=${encodeURIComponent(next)}` : ''));
+
+    if (!expected || expected !== search.get('state')) return { error: 'Вход не подтверждён. Нажми «Войти через Telegram» на этой странице' };
+
     try {
         const base64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
-        return JSON.parse(atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')));
+        return { data: JSON.parse(atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='))) };
     } catch {
-        return null;
+        return { error: 'Не получилось войти. Попробуй ещё раз' };
     }
 };
 
-let pendingAuthData = readAuthResult();
+let pendingAuth = readAuthResult();
 
 export default function Auth() {
     const navigate = useNavigate();
     const location = useLocation();
     const redirectTo = location.state?.from ?? new URLSearchParams(location.search).get('next') ?? '/';
     const { status } = useAuth();
-    const [isPending, setIsPending] = useState(Boolean(pendingAuthData));
-    const [error, setError] = useState(null);
+    const [isPending, setIsPending] = useState(Boolean(pendingAuth?.data));
+    const [error, setError] = useState(pendingAuth?.error ?? null);
 
     useEffect(() => {
-        const data = pendingAuthData;
+        const data = pendingAuth?.data;
         if (!data) return;
-        pendingAuthData = null;
+        pendingAuth = null;
 
         loginWithTelegram(data)
             .then(() => navigate(redirectTo, { replace: true }))
@@ -52,11 +78,15 @@ export default function Auth() {
             return;
         }
 
+        const state = crypto.randomUUID();
+        session.put(STATE_KEY, state);
+
         const next = location.state?.from;
+        const query = new URLSearchParams({ state, ...(next ? { next } : {}) });
         const params = new URLSearchParams({
             bot_id: TELEGRAM_BOT_ID,
             origin: window.location.origin,
-            return_to: window.location.origin + location.pathname + (next ? `?next=${encodeURIComponent(next)}` : ''),
+            return_to: `${window.location.origin}${location.pathname}?${query}`,
         });
         window.location.href = `${TELEGRAM_OAUTH_URL}?${params}`;
     };
