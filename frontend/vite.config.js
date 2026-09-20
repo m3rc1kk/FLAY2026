@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      host: env.VITE_DEV_HOST || '127.0.0.1',
       allowedHosts: ['.ngrok-free.app', '.ngrok-free.dev', '.ngrok.app'],
       proxy: {
         '/api': backend,

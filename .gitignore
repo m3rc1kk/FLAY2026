@@ -88,3 +88,10 @@ coverage/
 *.lock
 celerybeat-schedule
 celerybeat.pid
+# Compiled styles from the IDE file watcher (only styles.css is imported)
+frontend/src/**/*.css
+!frontend/src/styles/styles.css
+*.css.map
+
+# Local tooling
+.claude/
