@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import update_last_login
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -6,6 +7,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from apps.auth.preview import is_preview_allowed
 from apps.auth.serializers import (
     LogoutSerializer, TelegramAuthSerializer, UserSerializer,
 )
@@ -65,3 +67,13 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class PreviewView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        return Response({
+            'closed': bool(settings.PREVIEW_TELEGRAM_IDS),
+            'allowed': is_preview_allowed(request.user),
+        })
