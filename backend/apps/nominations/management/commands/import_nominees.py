@@ -20,6 +20,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('spec', help='JSON file: {"Nomination": ["Name", {"name": "Name", "photo": "File stem"}]}')
         parser.add_argument('--photos', help='Folder with photos. Defaults to the folder of the JSON file.')
+        parser.add_argument('--replace-photos', action='store_true', help='Replace photos of candidates that already have one.')
 
     def handle(self, *args, **options):
         spec_path = Path(options['spec'])
@@ -31,18 +32,20 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             for title, candidates in spec.items():
-                self.import_nomination(title, candidates, photos)
+                self.import_nomination(title, candidates, photos, options['replace_photos'])
 
     def index_photos(self, folder):
         if not folder.is_dir():
             raise CommandError(f'Folder not found: {folder}')
-        return {
-            normalize(path.stem): path
-            for path in folder.rglob('*')
-            if path.is_file() and path.suffix.lower().lstrip('.') in PHOTO_EXTENSIONS
-        }
+        index = {}
+        paths = sorted(path for path in folder.rglob('*') if path.is_file() and path.suffix.lower().lstrip('.') in PHOTO_EXTENSIONS)
+        for path in paths:
+            relative = path.relative_to(folder).with_suffix('')
+            index[normalize('/'.join(relative.parts))] = path
+            index.setdefault(normalize(path.stem), path)
+        return index
 
-    def import_nomination(self, title, candidates, photos):
+    def import_nomination(self, title, candidates, photos, replace_photos):
         nomination = Nomination.objects.filter(title__iexact=title).first()
         if nomination is None:
             last_order = Nomination.objects.aggregate(value=Max('order'))['value']
@@ -61,12 +64,16 @@ class Command(BaseCommand):
 
             status = 'photo kept' if candidate.photo else 'no photo'
             path = photos.get(normalize(photo_name))
-            if not candidate.photo and path is not None:
+            if path is not None and (replace_photos or not candidate.photo):
                 try:
-                    candidate.photo = compress_photo(ContentFile(path.read_bytes(), name=path.name))
-                    status = 'photo added'
+                    new_photo = compress_photo(ContentFile(path.read_bytes(), name=path.name))
                 except PhotoError as error:
                     status = f'photo error: {error}'
+                else:
+                    if candidate.photo:
+                        candidate.photo.storage.delete(candidate.photo.name)
+                    candidate.photo = new_photo
+                    status = 'photo added'
 
             candidate.save()
             line = f'    {"+" if created else "="} {name} ({status})'
