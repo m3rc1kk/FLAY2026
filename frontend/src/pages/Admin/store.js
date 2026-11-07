@@ -220,6 +220,11 @@ export const setCandidatePhoto = (candidateId, photo) => mutate(
     [fetchNominations],
 );
 
+export const setCandidateDetails = (candidateId, details) => mutate(
+    () => api(`/admin/candidates/${candidateId}/`, { method: 'PATCH', body: candidateForm({ details }) }),
+    [fetchNominations],
+);
+
 export const removeCandidate = (candidateId) => mutate(
     () => api(`/admin/candidates/${candidateId}/`, { method: 'DELETE' }),
     [fetchNominations],

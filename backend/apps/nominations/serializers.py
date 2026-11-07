@@ -8,7 +8,7 @@ class CandidateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Candidate
-        fields = ['id', 'name', 'photo']
+        fields = ['id', 'name', 'photo', 'details']
 
     def get_photo(self, obj):
         return obj.photo.url if obj.photo else None

@@ -14,6 +14,12 @@ const pad = (value) => String(value).padStart(2, '0');
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getInfoLabel = (title) => {
+    if (/СКВАД/i.test(title)) return 'Состав';
+    if (/ФЕЙЛ/i.test(title)) return 'Что случилось';
+    return 'Подробнее';
+};
+
 const getVoteBlocker = (auth, voting) => {
     if (auth.status !== 'authenticated') return 'auth';
     if (auth.user.vote_restriction) return auth.user.vote_restriction;
@@ -49,6 +55,9 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
     const [status, setStatus] = useState(savedNominee ? 'voted' : 'idle');
     const [notice, setNotice] = useState(null);
     const [syncedId, setSyncedId] = useState(savedId);
+    const [infoId, setInfoId] = useState(null);
+    const infoNominee = nomination.nominees.find((nominee) => nominee.id === infoId) ?? null;
+    const infoLabel = getInfoLabel(nomination.title);
 
     if (savedId !== syncedId) {
         setSyncedId(savedId);
@@ -122,7 +131,9 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.key === 'Escape') {
-                if (selected && status === 'idle') {
+                if (infoId !== null) {
+                    setInfoId(null);
+                } else if (selected && status === 'idle') {
                     cancel();
                 } else {
                     onClose();
@@ -130,14 +141,14 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                 return;
             }
 
-            if (status === 'sending' || event.target.closest?.('input, textarea')) return;
+            if (status === 'sending' || infoId !== null || event.target.closest?.('input, textarea')) return;
             if (event.key === 'ArrowRight') onGo(next.id, 1);
             if (event.key === 'ArrowLeft') onGo(previous.id, -1);
         };
         document.addEventListener('keydown', handleKeyDown);
 
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selected, status, cancel, onClose, onGo, next, previous]);
+    }, [selected, status, infoId, cancel, onClose, onGo, next, previous]);
 
     const isBarVisible = Boolean(selected);
     const hasNominees = nomination.nominees.length > 0;
@@ -198,7 +209,9 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                                 isSelected={selected?.id === nominee.id}
                                 isVoted={status === 'voted' && selected?.id === nominee.id}
                                 isLocked={status !== 'idle'}
+                                infoLabel={nominee.details ? infoLabel : ''}
                                 onSelect={() => select(nominee)}
+                                onInfo={() => setInfoId(nominee.id)}
                             />
                         ))}
                     </div>
@@ -265,6 +278,29 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                     </div>
                 </div>
             </div>
+
+            {infoNominee && (
+                <div className="nominees-info" onClick={() => setInfoId(null)}>
+                    <div
+                        className="nominees-info__box"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={`${infoLabel}: ${infoNominee.name}`}
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <button type="button" className="nominees-info__close" onClick={() => setInfoId(null)} aria-label="Закрыть" autoFocus>
+                            <img src={closeIcon} width={24} height={24} alt=""/>
+                        </button>
+                        <span className="nominees-info__label">{infoLabel}</span>
+                        <span className="nominees-info__name">{infoNominee.name}</span>
+                        <div className="nominees-info__text">
+                            {infoNominee.details.split('\n').filter((line) => line.trim()).map((line, lineIndex) => (
+                                <p key={lineIndex} className="nominees-info__line">{line}</p>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

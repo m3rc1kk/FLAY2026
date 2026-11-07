@@ -596,6 +596,7 @@
   &__item {
     position: relative;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     column-gap: 12px;
     min-height: 64px;
@@ -679,6 +680,23 @@
   &__actions {
     display: flex;
     column-gap: 6px;
+  }
+
+  &__details-toggle.is-filled {
+    color: var(--color-accent);
+  }
+
+  &__details {
+    display: flex;
+    flex: 1 0 100%;
+    flex-direction: column;
+    row-gap: 10px;
+    padding-top: 12px;
+  }
+
+  &__details-actions {
+    display: flex;
+    column-gap: 8px;
   }
 }
 

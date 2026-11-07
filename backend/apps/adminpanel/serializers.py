@@ -13,7 +13,10 @@ class AdminCandidateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Candidate
-        fields = ['id', 'name', 'photo']
+        fields = ['id', 'name', 'photo', 'details']
+
+    def validate_details(self, value):
+        return value.strip()
 
     def validate_name(self, value):
         value = value.strip()

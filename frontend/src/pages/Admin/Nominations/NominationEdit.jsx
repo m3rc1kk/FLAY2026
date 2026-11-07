@@ -9,6 +9,7 @@ import {
     plural,
     removeCandidate,
     removeNomination,
+    setCandidateDetails,
     setCandidatePhoto,
     TOTAL_USERS_SELECTOR,
     updateNomination,
@@ -77,7 +78,42 @@ function MainForm({ nomination }) {
     );
 }
 
+function CandidateDetails({ candidate, onClose }) {
+    const [value, setValue] = useState(candidate.details ?? '');
+    const [isSaving, setIsSaving] = useState(false);
+    const isDirty = value.trim() !== (candidate.details ?? '');
+
+    const save = async (event) => {
+        event.preventDefault();
+        if (!isDirty || isSaving) return;
+        setIsSaving(true);
+        const result = await setCandidateDetails(candidate.id, value.trim());
+        setIsSaving(false);
+        if (!result) return;
+        notify(`Пояснение сохранено: ${candidate.name}`);
+        onClose();
+    };
+
+    return (
+        <form className="admin-candidates__details" onSubmit={save}>
+            <textarea
+                className="admin-field__input admin-field__textarea"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                rows={5}
+                placeholder="Для фейла: что произошло. Для сквада: состав, каждый участник с новой строки"
+                autoFocus
+            />
+            <span className="admin-candidates__details-actions">
+                <button type="submit" className="admin-button admin-button--small" disabled={!isDirty || isSaving}>{isSaving ? 'Сохраняем' : 'Сохранить'}</button>
+                <button type="button" className="admin-button admin-button--ghost admin-button--small" onClick={onClose}>Закрыть</button>
+            </span>
+        </form>
+    );
+}
+
 function Candidates({ nomination, results }) {
+    const [detailsId, setDetailsId] = useState(null);
     const [name, setName] = useState('');
     const [photo, setPhoto] = useState(null);
     const [isAdding, setIsAdding] = useState(false);
@@ -142,7 +178,7 @@ function Candidates({ nomination, results }) {
                             <li
                                 key={candidate.id}
                                 className={`admin-candidates__item${dragIndex === index ? ' is-dragging' : ''}${overIndex === index && dragIndex !== index ? ' is-over' : ''}${isConfirming ? ' is-confirming' : ''}`}
-                                draggable={!isConfirming}
+                                draggable={!isConfirming && detailsId !== candidate.id}
                                 onDragStart={() => setDragIndex(index)}
                                 onDragOver={(event) => {
                                     event.preventDefault();
@@ -188,12 +224,24 @@ function Candidates({ nomination, results }) {
                                             <span className="admin-candidates__name">{candidate.name}</span>
                                             <span className="admin-candidates__meta">кандидат {pad(index + 1)} · {votesLabel(votes)}</span>
                                         </span>
+                                        <button
+                                            type="button"
+                                            className={`admin-button admin-button--ghost admin-button--small admin-candidates__details-toggle${candidate.details ? ' is-filled' : ''}`}
+                                            onClick={() => setDetailsId(detailsId === candidate.id ? null : candidate.id)}
+                                            aria-expanded={detailsId === candidate.id}
+                                        >
+                                            Пояснение
+                                        </button>
                                         <button type="button" className="admin-icon-button" onClick={() => setConfirmId(candidate.id)} aria-label={`Удалить ${candidate.name}`}>
                                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
                                                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                             </svg>
                                         </button>
                                     </>
+                                )}
+
+                                {detailsId === candidate.id && !isConfirming && (
+                                    <CandidateDetails key={candidate.id} candidate={candidate} onClose={() => setDetailsId(null)} />
                                 )}
                             </li>
                         );

@@ -1,12 +1,12 @@
 import ButtonLink from "../Button/Button.jsx";
 import nomineeExample from '../../assets/images/Nominee/nominee-example.png'
 
-export default function NomineeCard({ name, number, image = nomineeExample, index = 0, isSelected = false, isVoted = false, isLocked = false, onSelect }) {
+export default function NomineeCard({ name, number, image = nomineeExample, index = 0, isSelected = false, isVoted = false, isLocked = false, infoLabel = '', onSelect, onInfo }) {
     const stateClass = `${isSelected ? ' is-selected' : ''}${isVoted ? ' is-voted' : ''}`;
     const action = isVoted ? 'ГОЛОС ОТДАН' : isSelected ? 'ТВОЙ ВЫБОР' : 'ВЫБРАТЬ';
 
     return (
-        <>
+        <div className="nominee-item" style={{ '--i': index }}>
             <ButtonLink
                 type="button"
                 className={`nominee-card${stateClass}`}
@@ -33,6 +33,12 @@ export default function NomineeCard({ name, number, image = nomineeExample, inde
                     </span>
                 </span>
             </ButtonLink>
-        </>
+
+            {infoLabel && (
+                <button type="button" className="nominee-item__info" onClick={onInfo} aria-haspopup="dialog">
+                    {infoLabel}
+                </button>
+            )}
+        </div>
     );
 }

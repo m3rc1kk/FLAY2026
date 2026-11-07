@@ -75,6 +75,18 @@ class Command(BaseCommand):
                     candidate.photo = new_photo
                     status = 'photo added'
 
+            if not candidate.photo:
+                twin = (
+                    Candidate.objects.exclude(photo='')
+                    .exclude(pk=candidate.pk)
+                    .filter(name__iexact=name)
+                    .first()
+                )
+                if twin is not None and twin.photo.storage.exists(twin.photo.name):
+                    with twin.photo.open('rb') as file:
+                        candidate.photo = ContentFile(file.read(), name=Path(twin.photo.name).name)
+                    status = 'photo copied'
+
             candidate.save()
             line = f'    {"+" if created else "="} {name} ({status})'
             self.stdout.write(self.style.WARNING(line) if status == 'no photo' or status.startswith('photo error') else line)

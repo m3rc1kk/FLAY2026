@@ -13,6 +13,7 @@ const toNomination = (nomination, index) => ({
         number: candidateIndex + 1,
         name: candidate.name,
         image: candidate.photo ?? undefined,
+        details: candidate.details ?? '',
     })),
 });
 

@@ -216,6 +216,42 @@
   }
 }
 
+.nominee-item {
+  position: relative;
+  min-width: 0;
+
+  &__info {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+    padding: 8px 14px;
+    border: 1px solid rgba(var(--color-accent-rgb), .6);
+    border-radius: 999px;
+    background: rgba(18, 18, 18, .78);
+    backdrop-filter: blur(6px);
+    color: var(--color-accent);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    animation: nominee-card-in .8s cubic-bezier(.2, .8, .2, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 70ms + 420ms);
+    transition: background-color .25s ease, color .25s ease;
+
+    @include hover {
+      background: var(--color-accent);
+      color: var(--color-dark);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 3px;
+    }
+  }
+}
+
 @keyframes nominee-card-in {
   from {
     opacity: 0;
@@ -259,6 +295,13 @@
 }
 
 @include mobile {
+  .nominee-item__info {
+    top: 8px;
+    right: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
   .nominee-card {
     &__name {
       font-size: 18px;

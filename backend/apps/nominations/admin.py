@@ -24,7 +24,7 @@ class CandidateInline(admin.TabularInline):
     model = Candidate
     form = CandidateForm
     extra = 1
-    fields = ('name', 'photo', 'order')
+    fields = ('name', 'photo', 'details', 'order')
 
 
 @admin.register(Nomination)
