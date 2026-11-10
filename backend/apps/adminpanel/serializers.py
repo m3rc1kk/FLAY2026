@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.auth.models import AllowedTelegramId, User
 from apps.nominations.images import PhotoError, compress_photo
 from apps.nominations.models import Candidate, Nomination
-from apps.voting.models import Event, Vote, VotingSettings
+from apps.voting.models import Event, Prediction, Vote, VotingSettings
 
 
 class AdminCandidateSerializer(serializers.ModelSerializer):
@@ -44,13 +44,20 @@ class AdminVoteSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'candidate', 'created_at']
 
 
+class AdminPredictionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prediction
+        fields = ['id', 'user', 'candidate', 'created_at']
+
+
 class AdminNominationSerializer(serializers.ModelSerializer):
     candidates = AdminCandidateSerializer(many=True, read_only=True)
     votes = AdminVoteSerializer(many=True, read_only=True)
+    predictions = AdminPredictionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Nomination
-        fields = ['id', 'title', 'description', 'candidates', 'votes']
+        fields = ['id', 'title', 'description', 'candidates', 'votes', 'predictions']
 
     def validate_title(self, value):
         value = value.strip()

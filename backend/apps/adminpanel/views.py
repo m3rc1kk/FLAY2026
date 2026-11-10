@@ -33,7 +33,7 @@ def apply_order(queryset, ids):
 
 
 class NominationListView(AdminMixin, generics.ListCreateAPIView):
-    queryset = Nomination.objects.prefetch_related('candidates', 'votes')
+    queryset = Nomination.objects.prefetch_related('candidates', 'votes', 'predictions')
     serializer_class = AdminNominationSerializer
 
     def perform_create(self, serializer):
@@ -42,7 +42,7 @@ class NominationListView(AdminMixin, generics.ListCreateAPIView):
 
 
 class NominationDetailView(AdminMixin, generics.RetrieveUpdateDestroyAPIView):
-    queryset = Nomination.objects.prefetch_related('candidates', 'votes')
+    queryset = Nomination.objects.prefetch_related('candidates', 'votes', 'predictions')
     serializer_class = AdminNominationSerializer
 
     def perform_destroy(self, instance):

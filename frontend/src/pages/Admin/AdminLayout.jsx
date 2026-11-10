@@ -13,6 +13,7 @@ function Icon({ name }) {
         dashboard: 'M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z',
         nominations: 'M6 3h12v4a6 6 0 0 1-12 0V3zm6 10v4m-4 4h8M6 5H3v1a3 3 0 0 0 3 3m12-4h3v1a3 3 0 0 1-3 3',
         voting: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
+        predictions: 'M12 3v3m0 12v3M3 12h3m12 0h3m-9-4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
         users: 'M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m6.5-9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 19v-1a4 4 0 0 0-3-3.85M15.5 3.15a3.5 3.5 0 0 1 0 6.7',
         access: 'M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3zm-3 9l2 2 4-4',
         logout: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
@@ -31,6 +32,7 @@ const NAV = [
     { to: '/admin', label: 'Дашборд', icon: 'dashboard', end: true },
     { to: '/admin/voting', label: 'Голосование', icon: 'voting' },
     { to: '/admin/nominations', label: 'Номинации', icon: 'nominations' },
+    { to: '/admin/predictions', label: 'Прогнозы', icon: 'predictions' },
     { to: '/admin/users', label: 'Пользователи', icon: 'users' },
     { to: '/admin/access', label: 'Список доступа', icon: 'access' },
 ];

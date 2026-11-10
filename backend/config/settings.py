@@ -203,3 +203,5 @@ TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_AUTH_MAX_AGE = config('TELEGRAM_AUTH_MAX_AGE', default=300, cast=int)
 
 PREVIEW_TELEGRAM_IDS = config('PREVIEW_TELEGRAM_IDS', default='', cast=lambda value: {int(item) for item in value.split(',') if item.strip()})
+
+PREDICTIONS_ENABLED = config('PREDICTIONS_ENABLED', default=False, cast=bool)

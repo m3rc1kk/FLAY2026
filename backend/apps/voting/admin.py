@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.voting.models import Event, Vote, VotingSettings
+from apps.voting.models import Event, Prediction, Vote, VotingSettings
 
 
 @admin.register(VotingSettings)
@@ -13,6 +13,13 @@ class VotingSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(Vote)
 class VoteAdmin(admin.ModelAdmin):
+    list_display = ('user', 'nomination', 'candidate', 'created_at')
+    list_filter = ('nomination',)
+    list_select_related = ('user', 'nomination', 'candidate')
+
+
+@admin.register(Prediction)
+class PredictionAdmin(admin.ModelAdmin):
     list_display = ('user', 'nomination', 'candidate', 'created_at')
     list_filter = ('nomination',)
     list_select_related = ('user', 'nomination', 'candidate')

@@ -53,6 +53,22 @@ class Vote(models.Model):
         return f'{self.user} -> {self.candidate}'
 
 
+class Prediction(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='predictions')
+    nomination = models.ForeignKey('nominations.Nomination', on_delete=models.CASCADE, related_name='predictions')
+    candidate = models.ForeignKey('nominations.Candidate', on_delete=models.CASCADE, related_name='predictions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'nomination'], name='unique_prediction_per_nomination'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} ~ {self.candidate}'
+
+
 class Event(models.Model):
     class Kind(models.TextChoices):
         VOTE = 'vote'

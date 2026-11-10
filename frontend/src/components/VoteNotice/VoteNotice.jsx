@@ -73,8 +73,33 @@ const NOTICES = {
     },
 };
 
-export default function VoteNotice({ type, telegramId, onClose }) {
-    const notice = NOTICES[type] ?? NOTICES.error;
+const PREDICTION_NOTICES = {
+    auth: {
+        text: 'Делать прогнозы можно после входа через Telegram. Это займёт пару секунд.',
+    },
+    not_allowed: {
+        text: 'Делать прогнозы могут только участники фанклуба FLAY. Если это ошибка, отправь организатору свой Telegram ID.',
+    },
+    banned: {
+        title: 'ПРОГНОЗЫ НЕДОСТУПНЫ',
+        text: 'Организатор ограничил доступ к прогнозам для этого аккаунта.',
+    },
+    upcoming: {
+        title: 'ПРОГНОЗЫ ЕЩЁ НЕ ОТКРЫТЫ',
+        text: 'Прогнозы начнут приниматься вместе с голосами, когда стартует таймер.',
+    },
+    finished: {
+        title: 'ПРОГНОЗЫ ЗАКРЫТЫ',
+        text: 'Прогнозы больше не принимаются. Итоги объявят на церемонии FLAY 2026.',
+    },
+    error: {
+        title: 'ПРОГНОЗ НЕ СОХРАНЁН',
+    },
+};
+
+export default function VoteNotice({ type, mode = 'vote', telegramId, onClose }) {
+    const key = NOTICES[type] ? type : 'error';
+    const notice = mode === 'prediction' ? { ...NOTICES[key], ...PREDICTION_NOTICES[key] } : NOTICES[key];
 
     return (
         <div className={`vote-notice is-${notice.tone}`} role="alert">

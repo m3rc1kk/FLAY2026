@@ -92,6 +92,12 @@ const buildNominations = (rawNominations, users) => {
             candidateId: vote.candidate,
             at: toTime(vote.created_at),
         }));
+        const predictions = (nomination.predictions ?? []).map((prediction) => ({
+            id: prediction.id,
+            userId: prediction.user,
+            candidateId: prediction.candidate,
+            at: toTime(prediction.created_at),
+        }));
         return {
             id: nomination.id,
             title: nomination.title,
@@ -99,6 +105,7 @@ const buildNominations = (rawNominations, users) => {
             candidates: nomination.candidates,
             allVotes,
             votes: allVotes.filter((vote) => !banned.has(vote.userId)),
+            predictions: predictions.filter((prediction) => !banned.has(prediction.userId)),
         };
     });
 };
@@ -172,6 +179,45 @@ export const getResults = (nomination) => {
             return { ...candidate, votes, share: total ? votes / total : 0 };
         })
         .sort((a, b) => b.votes - a.votes);
+};
+
+export const getWinnerIds = (nomination) => {
+    const results = getResults(nomination);
+    const top = results[0]?.votes ?? 0;
+    return top > 0 ? results.filter((item) => item.votes === top).map((item) => item.id) : [];
+};
+
+export const getPredictionRating = (nominations, users) => {
+    const usersById = Object.fromEntries(users.map((user) => [user.id, user]));
+    const rows = {};
+
+    nominations.forEach((nomination) => {
+        const winnerIds = getWinnerIds(nomination);
+        const names = Object.fromEntries(nomination.candidates.map((candidate) => [candidate.id, candidate.name]));
+
+        nomination.predictions.forEach((prediction) => {
+            const user = usersById[prediction.userId];
+            if (!user) return;
+
+            const result = winnerIds.length === 0 ? 'open' : winnerIds.includes(prediction.candidateId) ? 'hit' : 'miss';
+            const row = rows[user.id] ?? (rows[user.id] = { user, points: 0, picks: [] });
+            if (result === 'hit') row.points += 1;
+            row.picks.push({
+                nominationId: nomination.id,
+                nomination: nomination.title,
+                candidate: names[prediction.candidateId] ?? '',
+                winners: winnerIds.map((id) => names[id]),
+                result,
+            });
+        });
+    });
+
+    const sorted = Object.values(rows).sort((a, b) => b.points - a.points || b.picks.length - a.picks.length || a.user.name.localeCompare(b.user.name, 'ru'));
+    let place = 0;
+    return sorted.map((row, index) => {
+        if (index === 0 || row.points !== sorted[index - 1].points) place = index + 1;
+        return { ...row, place };
+    });
 };
 
 export const addNomination = () => mutate(

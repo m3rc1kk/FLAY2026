@@ -5,6 +5,7 @@ import LogoMark from "../../components/LogoMark/LogoMark.jsx";
 import VoteNotice from "../../components/VoteNotice/VoteNotice.jsx";
 import { findNomination, useNominations } from "../../data/nominations.js";
 import { loadVotes, removeVote, saveVote, useVotes } from "../../data/votes.js";
+import { loadPredictions, removePrediction, savePrediction, usePredictions } from "../../data/predictions.js";
 import { useAuth } from "../../data/auth.js";
 import { getVotingPhase, loadVoting, useVoting } from "../../data/voting.js";
 import closeIcon from '../../assets/images/Nominee/close.svg'
@@ -27,6 +28,39 @@ const getVoteBlocker = (auth, voting) => {
     return phase === 'active' ? null : phase;
 };
 
+const MODES = {
+    vote: {
+        tab: 'Голос',
+        save: saveVote,
+        remove: removeVote,
+        reload: loadVotes,
+        conflict: 'already_voted',
+        idle: 'ТВОЙ ВЫБОР',
+        sending: 'ОТПРАВЛЯЕМ ГОЛОС',
+        done: 'ГОЛОС ПРИНЯТ',
+        card: 'ГОЛОС ОТДАН',
+        submit: 'Проголосовать',
+        submitting: 'Отправляем',
+        undo: 'Отменить голос',
+        hint: 'Выбери того, кто заслужил победу.',
+    },
+    prediction: {
+        tab: 'Прогноз',
+        save: savePrediction,
+        remove: removePrediction,
+        reload: loadPredictions,
+        conflict: 'already_predicted',
+        idle: 'ТВОЙ ПРОГНОЗ',
+        sending: 'СОХРАНЯЕМ ПРОГНОЗ',
+        done: 'ПРОГНОЗ ПРИНЯТ',
+        card: 'ПРОГНОЗ СДЕЛАН',
+        submit: 'Сделать прогноз',
+        submitting: 'Сохраняем',
+        undo: 'Отменить прогноз',
+        hint: 'Угадай, кто победит. На голосование прогноз не влияет.',
+    },
+};
+
 const getErrorNotice = (error, voting) => {
     if (error.status === 401) return 'auth';
     if (error.code === 'voting_closed') return getVotingPhase(voting) === 'upcoming' ? 'upcoming' : 'finished';
@@ -42,8 +76,11 @@ function ArrowIcon({ className = '' }) {
     );
 }
 
-function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, direction, onClose, onGo }) {
-    const votes = useVotes();
+function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, direction, mode, canPredict, onMode, onClose, onGo }) {
+    const allVotes = useVotes();
+    const predictions = usePredictions();
+    const config = MODES[mode];
+    const votes = mode === 'prediction' ? predictions : allVotes;
     const auth = useAuth();
     const voting = useVoting();
     const pendingRef = useRef(false);
@@ -102,31 +139,31 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
         setNotice(null);
         setStatus('sending');
         try {
-            await Promise.all([saveVote(nomination.id, selected.id), wait(1100)]);
+            await Promise.all([config.save(nomination.id, selected.id), wait(1100)]);
             setStatus('voted');
         } catch (error) {
             setStatus('idle');
             setNotice(getErrorNotice(error, voting));
-            if (error.code === 'already_voted') loadVotes();
+            if (error.code === config.conflict) config.reload();
             if (error.code === 'voting_closed') loadVoting();
         } finally {
             pendingRef.current = false;
         }
-    }, [auth, voting, nomination, selected]);
+    }, [auth, voting, nomination, selected, config]);
 
     const unvote = useCallback(async () => {
         if (pendingRef.current) return;
         pendingRef.current = true;
         try {
-            await removeVote(nomination.id);
+            await config.remove(nomination.id);
             setStatus('idle');
         } catch (error) {
             setNotice(getErrorNotice(error, voting));
-            if (error.status === 404) loadVotes();
+            if (error.status === 404) config.reload();
         } finally {
             pendingRef.current = false;
         }
-    }, [nomination, voting]);
+    }, [nomination, voting, config]);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
@@ -197,6 +234,27 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                     ))}
                 </nav>
 
+                {canPredict && (
+                    <div className="nominees__modes">
+                        <div className="nominees__modes-switch" role="tablist" aria-label="Режим">
+                            {Object.entries(MODES).map(([key, item]) => (
+                                <button
+                                    type="button"
+                                    key={key}
+                                    role="tab"
+                                    aria-selected={key === mode}
+                                    className={`nominees__mode${key === mode ? ' is-active' : ''}`}
+                                    onClick={() => onMode(key)}
+                                    disabled={status === 'sending' || key === mode}
+                                >
+                                    {item.tab}
+                                </button>
+                            ))}
+                        </div>
+                        <span className="nominees__modes-hint">{config.hint}</span>
+                    </div>
+                )}
+
                 {hasNominees ? (
                     <div className={`nominees__cards${selected ? ' has-selection' : ''}`}>
                         {nomination.nominees.map((nominee, cardIndex) => (
@@ -210,6 +268,7 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                                 isVoted={status === 'voted' && selected?.id === nominee.id}
                                 isLocked={status !== 'idle'}
                                 infoLabel={nominee.details ? infoLabel : ''}
+                                votedLabel={config.card}
                                 onSelect={() => select(nominee)}
                                 onInfo={() => setInfoId(nominee.id)}
                             />
@@ -233,7 +292,7 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
 
                 <div className="nominees-vote__inner container">
                     {notice && isBarVisible && (
-                        <VoteNotice type={notice} telegramId={auth.user?.telegram_id} onClose={() => setNotice(null)} />
+                        <VoteNotice type={notice} mode={mode} telegramId={auth.user?.telegram_id} onClose={() => setNotice(null)} />
                     )}
 
                     <div className="nominees-vote__line">
@@ -248,7 +307,7 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
 
                             <span className="nominees-vote__text">
                                 <span className="nominees-vote__label" role="status">
-                                    {status === 'voted' ? 'ГОЛОС ПРИНЯТ' : status === 'sending' ? 'ОТПРАВЛЯЕМ ГОЛОС' : 'ТВОЙ ВЫБОР'}
+                                    {status === 'voted' ? config.done : status === 'sending' ? config.sending : config.idle}
                                     <span className="nominees-vote__label-dot" />
                                     КАНДИДАТ {pad(barNominee?.number ?? 0)}
                                 </span>
@@ -259,7 +318,7 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                         <div className="nominees-vote__actions">
                             {status === 'voted' ? (
                                 <>
-                                    <button type="button" className="nominees-vote__cancel" onClick={unvote}>Отменить голос</button>
+                                    <button type="button" className="nominees-vote__cancel" onClick={unvote}>{config.undo}</button>
                                     <button type="button" className="nominees-vote__submit" onClick={isLast ? onClose : () => onGo(next.id, 1)}>
                                         <span className="nominees-vote__submit-text">{isLast ? 'К номинациям' : <>Следующая<span className="hidden-mobile"> категория</span></>}</span>
                                         <ArrowIcon className="nominees-vote__submit-icon" />
@@ -269,7 +328,7 @@ function NomineesBody({ nomination, nominations, titleId, closeRef, isSwitch, di
                                 <>
                                     <button type="button" className="nominees-vote__cancel" onClick={cancel} disabled={status !== 'idle'}>Отменить</button>
                                     <button type="button" className="nominees-vote__submit" onClick={vote} disabled={status !== 'idle'}>
-                                        <span className="nominees-vote__submit-text">{status === 'sending' ? 'Отправляем' : 'Проголосовать'}</span>
+                                        <span className="nominees-vote__submit-text">{status === 'sending' ? config.submitting : config.submit}</span>
                                         <ArrowIcon className="nominees-vote__submit-icon" />
                                     </button>
                                 </>
@@ -317,6 +376,9 @@ export default function Nominees() {
     const { items: nominations, status } = useNominations();
     const nomination = findNomination(nominations, id);
     const hasNomination = Boolean(nomination);
+    const canPredict = Boolean(useVoting()?.predictions_enabled);
+    const [wantedMode, setWantedMode] = useState('vote');
+    const mode = canPredict ? wantedMode : 'vote';
 
     const [isClosing, setIsClosing] = useState(false);
     const [direction, setDirection] = useState(1);
@@ -380,6 +442,12 @@ export default function Nominees() {
         };
     }, [hasNomination]);
 
+    const changeMode = useCallback((nextMode) => {
+        setHasSwitched(true);
+        setDirection(nextMode === 'prediction' ? 1 : -1);
+        setWantedMode(nextMode);
+    }, []);
+
     const handleAnimationEnd = (event) => {
         if (event.animationName === 'nominees-modal-out') leave();
     };
@@ -399,8 +467,11 @@ export default function Nominees() {
                 onAnimationEnd={handleAnimationEnd}
             >
                 <NomineesBody
-                    key={nomination.id}
+                    key={`${nomination.id}-${mode}`}
                     nominations={nominations}
+                    mode={mode}
+                    canPredict={canPredict}
+                    onMode={changeMode}
                     nomination={nomination}
                     titleId={titleId}
                     closeRef={closeRef}

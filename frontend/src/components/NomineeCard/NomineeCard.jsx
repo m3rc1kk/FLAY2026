@@ -1,9 +1,9 @@
 import ButtonLink from "../Button/Button.jsx";
 import nomineeExample from '../../assets/images/Nominee/nominee-example.png'
 
-export default function NomineeCard({ name, number, image = nomineeExample, index = 0, isSelected = false, isVoted = false, isLocked = false, infoLabel = '', onSelect, onInfo }) {
+export default function NomineeCard({ name, number, image = nomineeExample, index = 0, isSelected = false, isVoted = false, isLocked = false, infoLabel = '', votedLabel = 'ГОЛОС ОТДАН', onSelect, onInfo }) {
     const stateClass = `${isSelected ? ' is-selected' : ''}${isVoted ? ' is-voted' : ''}`;
-    const action = isVoted ? 'ГОЛОС ОТДАН' : isSelected ? 'ТВОЙ ВЫБОР' : 'ВЫБРАТЬ';
+    const action = isVoted ? votedLabel : isSelected ? 'ТВОЙ ВЫБОР' : 'ВЫБРАТЬ';
 
     return (
         <div className="nominee-item" style={{ '--i': index }}>

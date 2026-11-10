@@ -32,10 +32,13 @@ class Command(BaseCommand):
                 skipped += 1
                 continue
 
-            _, created = AllowedTelegramId.objects.get_or_create(
+            entry, created = AllowedTelegramId.objects.get_or_create(
                 telegram_id=int(match['id']),
                 defaults={'name': match['name'].strip()},
             )
+            if not created and not entry.name and match['name'].strip():
+                entry.name = match['name'].strip()
+                entry.save(update_fields=['name'])
             added += created
             self.stdout.write(f'{"+" if created else "="} {match["name"].strip()} {match["id"]}')
 

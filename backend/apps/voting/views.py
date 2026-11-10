@@ -1,11 +1,13 @@
+from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from apps.voting.models import Event, Vote, VotingSettings
-from apps.voting.serializers import VoteSerializer, VotingSettingsSerializer
+from apps.voting.models import Event, Prediction, Vote, VotingSettings
+from apps.voting.serializers import PredictionSerializer, VoteSerializer, VotingSettingsSerializer
 
 
 VOTE_ERRORS = {
@@ -13,6 +15,7 @@ VOTE_ERRORS = {
     'not_allowed': 'Your Telegram ID is not in the allowed list.',
     'voting_closed': 'Voting is closed.',
     'already_voted': 'You have already voted in this nomination.',
+    'already_predicted': 'You have already made a prediction in this nomination.',
 }
 
 
@@ -79,3 +82,47 @@ class VoteDetailView(VoteThrottleMixin, generics.DestroyAPIView):
         Event.objects.create(user=request.user, kind=Event.Kind.UNVOTE, nomination=vote.nomination, candidate=vote.candidate)
         vote.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PredictionsMixin(VoteThrottleMixin):
+    def initial(self, request, *args, **kwargs):
+        if not settings.PREDICTIONS_ENABLED:
+            raise Http404
+        super().initial(request, *args, **kwargs)
+
+
+class PredictionListView(PredictionsMixin, generics.ListCreateAPIView):
+    serializer_class = PredictionSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return Prediction.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        error = check_can_vote(request.user)
+        if error:
+            return error
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                prediction = serializer.save(user=request.user)
+        except IntegrityError:
+            return vote_error('already_predicted', status.HTTP_409_CONFLICT)
+
+        return Response(self.get_serializer(prediction).data, status=status.HTTP_201_CREATED)
+
+
+class PredictionDetailView(PredictionsMixin, generics.DestroyAPIView):
+    def get_object(self):
+        return get_object_or_404(Prediction, user=self.request.user, nomination_id=self.kwargs['nomination_id'])
+
+    def destroy(self, request, *args, **kwargs):
+        error = check_can_vote(request.user)
+        if error:
+            return error
+
+        self.get_object().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

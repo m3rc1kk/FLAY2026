@@ -1,6 +1,7 @@
 import { api, getTokens, onSessionExpired, setTokens } from '../api/client.js';
 import createStore from './createStore.js';
 import { loadVotes, resetVotes } from './votes.js';
+import { resetPredictions } from './predictions.js';
 
 const hasTokens = () => Boolean(getTokens().access || getTokens().refresh);
 
@@ -9,6 +10,7 @@ const store = createStore({ user: null, status: hasTokens() ? 'loading' : 'guest
 const clearSession = () => {
     setTokens();
     resetVotes();
+    resetPredictions();
     store.set({ user: null, status: 'guest' });
 };
 
