@@ -18,8 +18,13 @@ export default function Header() {
     useEffect(() => {
         if (!isMenuOpen) return;
 
+        const root = document.documentElement;
         const previousOverflow = document.body.style.overflow;
+        const previousRootOverflow = root.style.overflow;
+        const previousOverscroll = root.style.overscrollBehavior;
         document.body.style.overflow = 'hidden';
+        root.style.overflow = 'hidden';
+        root.style.overscrollBehavior = 'none';
 
         const handleKeyDown = (event) => {
             if (event.key === 'Escape') setIsMenuOpen(false);
@@ -33,6 +38,8 @@ export default function Header() {
 
         return () => {
             document.body.style.overflow = previousOverflow;
+            root.style.overflow = previousRootOverflow;
+            root.style.overscrollBehavior = previousOverscroll;
             document.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('resize', handleResize);
         };

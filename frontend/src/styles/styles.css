@@ -498,6 +498,8 @@ a {
   flex-direction: column;
   justify-content: space-between;
   padding: 120px 16px 32px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: radial-gradient(60% 40% at 100% 0%, rgba(var(--color-accent-rgb), 0.18), transparent 70%), radial-gradient(60% 40% at 0% 100%, rgba(var(--color-accent-rgb), 0.12), transparent 70%), var(--color-dark);
   clip-path: inset(0 0 100% 0);
   visibility: hidden;
