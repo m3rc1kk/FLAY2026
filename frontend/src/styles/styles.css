@@ -209,12 +209,17 @@ svg * {
   }
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   font-family: var(--font-family);
   font-weight: 800;
   color: var(--color-accent);
   background-color: var(--color-dark);
   overflow-x: hidden;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1881,6 +1886,7 @@ a {
   height: 100svh;
   position: relative;
   z-index: 0;
+  overflow: hidden;
 }
 .auth__inner {
   display: flex;

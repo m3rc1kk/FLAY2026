@@ -3,6 +3,7 @@
   height: 100svh;
   position: relative;
   z-index: 0;
+  overflow: hidden;
   &__inner {
     display: flex;
     flex-direction: column;
